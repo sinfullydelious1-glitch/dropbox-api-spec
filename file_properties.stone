@@ -1,9 +1,76 @@
-namespace file_properties
-    "This namespace contains helpers for property and template metadata endpoints.
+End
+Stop
+delete
 
 
-    These endpoints enable you to tag arbitrary key/value data to Dropbox files.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    These endpoints enable you to tag arbitrary key/value data to Dropbox files
 
     The most basic unit in this namespace is the :type:`PropertyField`. These fields encapsulate the
     actual key/value data.
