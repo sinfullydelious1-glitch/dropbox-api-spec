@@ -75,6 +75,7 @@ union AccountCapturePolicy
     all_users
     disabled
     invited_users
+    prevent_personal_creation
 
 union AccountState
     locked
@@ -186,9 +187,124 @@ union MemberRemoveActionType
     offboard
     offboard_and_retain_team_folders
 
+union AdminAlertCategoryEnum
+    "Alert category"
+    account_takeover
+    data_loss_protection
+    information_governance
+    malware_sharing
+    massive_file_operation
+    na
+    threat_management
+
+union AdminAlertGeneralStateEnum
+    "Alert state"
+    active
+    dismissed
+    in_progress
+    na
+    resolved
+
+union AdminAlertSeverityEnum
+    "Alert severity"
+    high
+    info
+    low
+    medium
+    na
+
+struct AdminAlertingAlertConfiguration
+    "Alert configurations"
+
+    alert_state AdminAlertingAlertStatePolicy?
+        "Alert state."
+    sensitivity_level AdminAlertingAlertSensitivity?
+        "Sensitivity level."
+    recipients_settings RecipientsConfiguration?
+        "Recipient settings."
+    text String?
+        "Text."
+    excluded_file_extensions String?
+        "Excluded file extensions."
+
+    example default
+        alert_state = off
+        sensitivity_level = invalid
+        recipients_settings = default
+        text = "abc"
+        excluded_file_extensions = "abc"
+
+    example default2
+        alert_state = off
+        sensitivity_level = invalid
+        recipients_settings = default2
+        text = "xyz"
+        excluded_file_extensions = "xyz"
+
+struct RecipientsConfiguration
+    "Recipients Configuration"
+
+    recipient_setting_type AlertRecipientsSettingType?
+        "Recipients setting type."
+    emails List(EmailAddress)?
+        "A list of user emails to notify."
+    groups List(String)?
+        "A list of groups to notify."
+
+    example default
+        recipient_setting_type = invalid
+        emails = ["john_smith@acmecorp.com"]
+        groups = ["abc"]
+
+    example default2
+        recipient_setting_type = invalid
+        emails = ["jane_smith@acmecorp.com"]
+        groups = ["xyz"]
+
+union AlertRecipientsSettingType
+    "Alert recipients setting type"
+    custom_list
+    invalid
+    none
+    team_admins
+
+union AdminAlertingAlertSensitivity
+    "Alert sensitivity"
+    high
+    highest
+    invalid
+    low
+    lowest
+    medium
+
+union AdminAlertingAlertStatePolicy
+    "Policy for controlling whether an alert can be triggered or not"
+    off
+    on
+
+union AdminConsoleAppPermission
+    default_for_listed_apps
+    default_for_unlisted_apps
+
+union AdminConsoleAppPolicy
+    allow
+    block
+    default
+
+union AdminEmailRemindersPolicy
+    "Policy for deciding whether team admins receive reminder emails for requests to join the team"
+    default
+    disabled
+    enabled
+
 union AdminRole
+    billing_admin
+    compliance_admin
+    content_admin
     limited_admin
     member_only
+    reporting_admin
+    security_admin
     support_admin
     team_admin
     user_management_admin
@@ -200,6 +316,12 @@ union BackupStatus
 
 union CameraUploadsPolicy
     "Policy for controlling if team members can activate camera uploads"
+    disabled
+    enabled
+
+union CaptureTranscriptPolicy
+    "Policy for deciding whether team users can transcription in Capture"
+    default
     disabled
     enabled
 
@@ -239,13 +361,21 @@ struct Certificate
         sha1_fingerprint = "xyz"
         common_name = "xyz"
 
+union ChangeLinkExpirationPolicy
+    "Policy for deciding whether the team's default expiration days policy must be enforced when an externally shared link is updated"
+    allowed
+    not_allowed
+
 union ClassificationPolicyEnumWrapper
     "Policy for controlling team access to the classification feature"
     disabled
     enabled
+    member_and_team_folders
+    team_folders
 
 union ClassificationType
-    "The type of classification (currently only PII)"
+    "The type of classification (currently only personal information)"
+    personal_information
     pii
 
 union ComputerBackupPolicy
@@ -259,6 +389,17 @@ union ContentPermanentDeletePolicy
     disabled
     enabled
 
+union DefaultLinkExpirationDaysPolicy
+    "Policy for the default number of days until an externally shared link expires"
+    day_1
+    day_180
+    day_3
+    day_30
+    day_7
+    day_90
+    none
+    year_1
+
 union DeviceApprovalsPolicy
     limited
     unlimited
@@ -271,10 +412,30 @@ union DeviceUnlinkPolicy
     keep
     remove
 
+union DispositionActionType
+    automatic_delete
+    automatic_permanently_delete
+
 union DownloadPolicyType
     "Shared content downloads policy"
     allow
     disallow
+
+union DropboxPasswordsPolicy
+    "Policy for deciding whether team users can use Dropbox Passwords"
+    default
+    disabled
+    enabled
+
+union EmailIngestPolicy
+    "Policy for deciding whether a team can use Email to Dropbox feature"
+    disabled
+    enabled
+
+union EnforceLinkPasswordPolicy
+    "Policy for deciding whether password must be enforced when an externally shared link is updated"
+    optional
+    required
 
 union ExtendedVersionHistoryPolicy
     explicitly_limited
@@ -282,11 +443,31 @@ union ExtendedVersionHistoryPolicy
     implicitly_limited
     implicitly_unlimited
 
+union ExternalDriveBackupEligibilityStatus
+    "External Drive Backup eligibility status"
+    exceed_license_cap
+    success
+
+union ExternalDriveBackupPolicy
+    "Policy for controlling team access to external drive backup feature"
+    default
+    disabled
+    enabled
+
+union ExternalDriveBackupStatus
+    "External Drive Backup status"
+    broken
+    created
+    created_or_broken
+    deleted
+    empty
+    unknown
+
 struct FailureDetailsLogInfo
     "Provides details about a failure"
 
     user_friendly_message String?
-        "A user friendly explanation of the error. Might be missing due to historical data gap."
+        "A user friendly explanation of the error."
     technical_error_message String?
         "A technical explanation of the error. This is relevant for some errors."
 
@@ -416,7 +597,7 @@ struct FileRequestDetails
     asset_index UInt64
         "Asset position in the Assets list."
     deadline FileRequestDeadline?
-        "File request deadline. Might be missing due to historical data gap."
+        "File request deadline."
 
     example default
         asset_index = 3
@@ -432,7 +613,7 @@ struct FileRequestDeadline
     deadline common.DropboxTimestamp?
         "The deadline for this file request. Might be missing due to historical data gap."
     allow_late_uploads String?
-        "If set, allow uploads after the deadline has passed. Might be missing due to historical data gap."
+        "If set, allow uploads after the deadline has passed."
 
     example default
         deadline = "2017-01-25T15:51:30Z"
@@ -449,6 +630,11 @@ union FileRequestsPolicy
 
 union FileTransfersPolicy
     "File transfers policy"
+    disabled
+    enabled
+
+union FolderLinkRestrictionPolicy
+    "Policy for deciding whether applying link restrictions on all team owned folders"
     disabled
     enabled
 
@@ -494,6 +680,17 @@ union IntegrationPolicy
     disabled
     enabled
 
+union InviteAcceptanceEmailPolicy
+    "Policy for deciding whether team admins receive email when an invitation to join the team is accepted"
+    disabled
+    enabled
+
+union LabelType
+    "Label type"
+    personal_information
+    test_only
+    user_defined_tag
+
 union LockStatus
     "File lock status"
     locked
@@ -503,6 +700,7 @@ union LoginMethod
     apple_oauth
     first_party_token_exchange
     google_oauth
+    lenovo_oauth
     password
     qr_code
     saml
@@ -532,6 +730,22 @@ union MemberSuggestionsPolicy
     "Member suggestions policy"
     disabled
     enabled
+
+struct MemberTransferredInternalFields
+    "Internal only - fields for target team computations"
+
+    source_team_id team_common.TeamId
+        "Internal only - team user was moved from."
+    target_team_id team_common.TeamId
+        "Internal only - team user was moved to."
+
+    example default
+        source_team_id = "dbtid:AAE3tIYgVuVT1gZork5wQJbXbmlrkBMq26c"
+        target_team_id = "dbtid:AAE3tIYgVuVT1gZork5wQJbXbmlrkBMq26c"
+
+    example default2
+        source_team_id = "dbtid:AAFAqKNLrx_W9MFkS2gWftX0QfTZpo03WsE"
+        target_team_id = "dbtid:AAFAqKNLrx_W9MFkS2gWftX0QfTZpo03WsE"
 
 union MicrosoftOfficeAddinPolicy
     "Microsoft Office addin policy"
@@ -580,8 +794,11 @@ union PlacementRestriction
     europe_only
     japan_only
     none
+    uk_only
+    us_s3_only
 
 union PolicyType
+    disposition
     retention
 
 struct RelocateAssetReferencesLogInfo
@@ -599,6 +816,10 @@ struct RelocateAssetReferencesLogInfo
     example default2
         src_asset_index = 4
         dest_asset_index = 4
+
+union ResellerRole
+    not_reseller
+    reseller_admin
 
 union ResellerSupportPolicy
     "Policy for controlling if reseller can access the admin console as administrator"
@@ -644,6 +865,7 @@ union SharingFolderJoinPolicy
 
 union SharingLinkPolicy
     "Policy for controlling if team members can share links externally"
+    default_no_one
     default_private
     default_public
     only_private
@@ -725,6 +947,7 @@ struct TeamLogInfo
 union TeamMembershipType
     free
     full
+    guest
 
 union TeamMergeRequestAcceptedExtraDetails
     "Team merge request acceptance details"
@@ -1060,9 +1283,9 @@ struct AppLogInfo
         team_linked_app TeamLinkedAppLogInfo
 
     app_id AppId?
-        "App unique ID. Might be missing due to historical data gap."
+        "App unique ID."
     display_name String?
-        "App display name. Might be missing due to historical data gap."
+        "App display name."
 
     example default
         team_linked_app = default
@@ -1088,11 +1311,11 @@ struct DeviceSessionLogInfo
         legacy_device_session LegacyDeviceSessionLogInfo
 
     ip_address IpAddress?
-        "The IP address of the last activity from this session. Might be missing due to historical data gap."
+        "The IP address of the last activity from this session."
     created common.DropboxTimestamp?
-        "The time this session was created. Might be missing due to historical data gap."
+        "The time this session was created."
     updated common.DropboxTimestamp?
-        "The time of the last activity from this session. Might be missing due to historical data gap."
+        "The time of the last activity from this session."
 
     example default
         desktop_device_session = default
@@ -1104,7 +1327,7 @@ struct DesktopDeviceSessionLogInfo extends DeviceSessionLogInfo
     "Information about linked Dropbox desktop client sessions"
 
     session_info DesktopSessionLogInfo?
-        "Desktop session unique id. Might be missing due to historical data gap."
+        "Desktop session unique id."
     host_name String
         "Name of the hosting desktop."
     client_type team.DesktopPlatform
@@ -1142,7 +1365,7 @@ struct MobileDeviceSessionLogInfo extends DeviceSessionLogInfo
     "Information about linked Dropbox mobile client sessions"
 
     session_info MobileSessionLogInfo?
-        "Mobile session unique id. Might be missing due to historical data gap."
+        "Mobile session unique id."
     device_name String
         "The device name."
     client_type team.MobileClientPlatform
@@ -1180,7 +1403,7 @@ struct WebDeviceSessionLogInfo extends DeviceSessionLogInfo
     "Information on active web sessions"
 
     session_info WebSessionLogInfo?
-        "Web session unique id. Might be missing due to historical data gap."
+        "Web session unique id."
     user_agent String
         "Information on the hosting device."
     os String
@@ -1210,7 +1433,7 @@ struct LegacyDeviceSessionLogInfo extends DeviceSessionLogInfo
     "Information on sessions, in legacy format"
 
     session_info SessionLogInfo?
-        "Session unique id. Might be missing due to historical data gap."
+        "Session unique id."
     display_name String?
         "The device name. Might be missing due to historical data gap."
     is_emm_managed Boolean?
@@ -1264,7 +1487,7 @@ struct SessionLogInfo
         mobile MobileSessionLogInfo
 
     session_id common.SessionId?
-        "Session ID. Might be missing due to historical data gap."
+        "Session ID."
 
     example default
         desktop = default
@@ -1280,11 +1503,11 @@ struct UserLogInfo
         non_team_member NonTeamMemberLogInfo
 
     account_id users_common.AccountId?
-        "User unique ID. Might be missing due to historical data gap."
+        "User unique ID."
     display_name common.DisplayNameLegacy?
-        "User display name. Might be missing due to historical data gap."
+        "User display name."
     email EmailAddress?
-        "User email address. Might be missing due to historical data gap."
+        "User email address."
 
     example default
         non_team_member = default
@@ -1318,7 +1541,7 @@ struct TeamMemberLogInfo extends UserLogInfo
     "Team member's logged information."
 
     team_member_id team_common.TeamMemberId?
-        "Team member ID. Might be missing due to historical data gap."
+        "Team member ID."
     member_external_id team_common.MemberExternalId?
         "Team member external ID."
     team TeamLogInfo?
@@ -1357,9 +1580,9 @@ struct FileOrFolderLogInfo
     path PathLogInfo
         "Path relative to event context."
     display_name String?
-        "Display name. Might be missing due to historical data gap."
+        "Display name."
     file_id String?
-        "Unique ID. Might be missing due to historical data gap."
+        "Unique ID."
     file_size UInt64?
         "File or folder size in bytes."
 
@@ -1414,11 +1637,11 @@ struct GroupLogInfo
     "Group's logged information."
 
     group_id team_common.GroupId?
-        "The unique id of this group. Might be missing due to historical data gap."
+        "The unique id of this group."
     display_name String
         "The name of this group."
     external_id team_common.GroupExternalId?
-        "External group ID. Might be missing due to historical data gap."
+        "External group ID."
 
     example default
         group_id = "g:e2db7665347abcd600000000001a2b3c"
@@ -1434,7 +1657,7 @@ struct PathLogInfo
     "Path's details."
 
     contextual FilePath?
-        "Fully qualified path relative to event's context. Might be missing due to historical data gap."
+        "Fully qualified path relative to event's context."
     namespace_relative NamespaceRelativePathLogInfo
         "Path relative to the namespace containing the content."
 
@@ -1495,11 +1718,11 @@ struct NamespaceRelativePathLogInfo
     "Namespace relative path details."
 
     ns_id NamespaceId?
-        "Namespace ID. Might be missing due to historical data gap."
+        "Namespace ID."
     relative_path FilePath?
-        "A path relative to the specified namespace ID. Might be missing due to historical data gap."
+        "A path relative to the specified namespace ID."
     is_shared_namespace Boolean?
-        "True if the namespace is shared. Might be missing due to historical data gap."
+        "True if the namespace is shared."
 
     example default
         ns_id = "1234"
@@ -1681,6 +1904,8 @@ union ParticipantLogInfo
 union EventCategory
     "Category of events in event audit log."
 
+    admin_alerting
+        "Events that involve team related alerts."
     apps
         "Events that apply to management of linked apps."
     comments
@@ -1691,6 +1916,8 @@ union EventCategory
         "Events that apply to linked devices on mobile, desktop and Web platforms."
     domains
         "Events that involve domain management feature: domain verification, invite enforcement and account capture."
+    encryption
+        "Events that involve encryption."
     file_operations
         "Events that have to do with filesystem operations on files and folders: copy, move, delete, etc."
     file_requests
@@ -1730,6 +1957,96 @@ union EventCategory
 #############################
 # Types for specific events
 #############################
+
+struct AdminAlertingAlertStateChangedDetails
+    "Changed an alert state."
+
+    alert_name String
+        "Alert name."
+    alert_severity AdminAlertSeverityEnum
+        "Alert severity."
+    alert_category AdminAlertCategoryEnum
+        "Alert category."
+    alert_instance_id String
+        "Alert ID."
+    previous_value AdminAlertGeneralStateEnum
+        "Alert state before the change."
+    new_value AdminAlertGeneralStateEnum
+        "Alert state after the change."
+
+    example default
+        alert_name = "abc"
+        alert_severity = na
+        alert_category = na
+        alert_instance_id = "pid_admin_alert:AAgAAOVHYCEuavqE0v3Jj9VDogV4wG9q8F-XZKwYpuYTVBm5"
+        previous_value = na
+        new_value = na
+
+struct AdminAlertingChangedAlertConfigDetails
+    "Changed an alert setting."
+
+    alert_name String
+        "Alert Name."
+    previous_alert_config AdminAlertingAlertConfiguration
+        "Previous alert configuration."
+    new_alert_config AdminAlertingAlertConfiguration
+        "New alert configuration."
+
+    example default
+        alert_name = "abc"
+        previous_alert_config = default
+        new_alert_config = default
+
+struct AdminAlertingTriggeredAlertDetails
+    "Triggered security alert."
+
+    alert_name String
+        "Alert name."
+    alert_severity AdminAlertSeverityEnum
+        "Alert severity."
+    alert_category AdminAlertCategoryEnum
+        "Alert category."
+    alert_instance_id String
+        "Alert ID."
+
+    example default
+        alert_name = "abc"
+        alert_severity = na
+        alert_category = na
+        alert_instance_id = "pid_admin_alert:AAgAAOVHYCEuavqE0v3Jj9VDogV4wG9q8F-XZKwYpuYTVBm5"
+
+struct RansomwareRestoreProcessCompletedDetails
+    "Completed ransomware restore process."
+
+    status String
+        "The status of the restore process."
+    restored_files_count Int64
+        "Restored files count."
+    restored_files_failed_count Int64
+        "Restored files failed count."
+
+    example default
+        status = "abc"
+        restored_files_count = 3
+        restored_files_failed_count = 3
+
+struct RansomwareRestoreProcessStartedDetails
+    "Started ransomware restore process."
+
+    extension String
+        "Ransomware filename extension."
+
+    example default
+        extension = "abc"
+
+struct AppBlockedByPermissionsDetails
+    "Failed to connect app for member."
+
+    app_info AppLogInfo
+        "Relevant application details."
+
+    example default
+        app_info = default
 
 struct AppLinkTeamDetails
     "Linked app for team."
@@ -1789,7 +2106,7 @@ struct FileAddCommentDetails
     "Added file comment."
 
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
 
     example default
         comment_text = "abc"
@@ -1810,7 +2127,7 @@ struct FileDeleteCommentDetails
     "Deleted file comment."
 
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
 
     example default
         comment_text = "abc"
@@ -1819,7 +2136,7 @@ struct FileEditCommentDetails
     "Edited file comment."
 
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
     previous_comment_text String
         "Previous comment text."
 
@@ -1831,7 +2148,7 @@ struct FileLikeCommentDetails
     "Liked file comment."
 
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
 
     example default
         comment_text = "abc"
@@ -1840,7 +2157,7 @@ struct FileResolveCommentDetails
     "Resolved file comment."
 
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
 
     example default
         comment_text = "abc"
@@ -1849,7 +2166,7 @@ struct FileUnlikeCommentDetails
     "Unliked file comment."
 
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
 
     example default
         comment_text = "abc"
@@ -1858,7 +2175,7 @@ struct FileUnresolveCommentDetails
     "Unresolved file comment."
 
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
 
     example default
         comment_text = "abc"
@@ -1880,6 +2197,45 @@ struct GovernancePolicyAddFoldersDetails
         name = "abc"
         policy_type = retention
         folders = ["abc"]
+
+struct GovernancePolicyAddFolderFailedDetails
+    "Couldn't add a folder to a policy."
+
+    governance_policy_id String
+        "Policy ID."
+    name String
+        "Policy name."
+    policy_type PolicyType?
+        "Policy type."
+    folder String
+        "Folder."
+    reason String?
+        "Reason."
+
+    example default
+        governance_policy_id = "abc"
+        name = "abc"
+        policy_type = retention
+        folder = "abc"
+        reason = "abc"
+
+struct GovernancePolicyContentDisposedDetails
+    "Content disposed."
+
+    governance_policy_id String
+        "Policy ID."
+    name String
+        "Policy name."
+    policy_type PolicyType?
+        "Policy type."
+    disposition_type DispositionActionType
+        "Disposition type."
+
+    example default
+        governance_policy_id = "abc"
+        name = "abc"
+        policy_type = retention
+        disposition_type = automatic_delete
 
 struct GovernancePolicyCreateDetails
     "Activated a new policy."
@@ -1962,6 +2318,42 @@ struct GovernancePolicyEditDurationDetails
         previous_value = default
         new_value = default
 
+struct GovernancePolicyExportCreatedDetails
+    "Created a policy download."
+
+    governance_policy_id String
+        "Policy ID."
+    name String
+        "Policy name."
+    policy_type PolicyType?
+        "Policy type."
+    export_name String
+        "Export name."
+
+    example default
+        governance_policy_id = "abc"
+        name = "abc"
+        policy_type = retention
+        export_name = "abc"
+
+struct GovernancePolicyExportRemovedDetails
+    "Removed a policy download."
+
+    governance_policy_id String
+        "Policy ID."
+    name String
+        "Policy name."
+    policy_type PolicyType?
+        "Policy type."
+    export_name String
+        "Export name."
+
+    example default
+        governance_policy_id = "abc"
+        name = "abc"
+        policy_type = retention
+        export_name = "abc"
+
 struct GovernancePolicyRemoveFoldersDetails
     "Removed folders from policy."
 
@@ -1973,12 +2365,51 @@ struct GovernancePolicyRemoveFoldersDetails
         "Policy type."
     folders List(String)?
         "Folders."
+    reason String?
+        "Reason."
 
     example default
         governance_policy_id = "abc"
         name = "abc"
         policy_type = retention
         folders = ["abc"]
+        reason = "abc"
+
+struct GovernancePolicyReportCreatedDetails
+    "Created a summary report for a policy."
+
+    governance_policy_id String
+        "Policy ID."
+    name String
+        "Policy name."
+    policy_type PolicyType?
+        "Policy type."
+
+    example default
+        governance_policy_id = "abc"
+        name = "abc"
+        policy_type = retention
+
+struct GovernancePolicyZipPartDownloadedDetails
+    "Downloaded content from a policy."
+
+    governance_policy_id String
+        "Policy ID."
+    name String
+        "Policy name."
+    policy_type PolicyType?
+        "Policy type."
+    export_name String
+        "Export name."
+    part String?
+        "Part."
+
+    example default
+        governance_policy_id = "abc"
+        name = "abc"
+        policy_type = retention
+        export_name = "abc"
+        part = "abc"
 
 struct LegalHoldsActivateAHoldDetails
     "Activated a hold."
@@ -2176,7 +2607,7 @@ struct DeviceDeleteOnUnlinkFailDetails
     "Failed to delete all files from unlinked device."
 
     session_info SessionLogInfo?
-        "Session unique id. Might be missing due to historical data gap."
+        "Session unique id."
     display_name String?
         "The device name. Might be missing due to historical data gap."
     num_failures Int64
@@ -2191,7 +2622,7 @@ struct DeviceDeleteOnUnlinkSuccessDetails
     "Deleted all files from unlinked device."
 
     session_info SessionLogInfo?
-        "Session unique id. Might be missing due to historical data gap."
+        "Session unique id."
     display_name String?
         "The device name. Might be missing due to historical data gap."
 
@@ -2279,6 +2710,36 @@ struct DropboxPasswordsNewDeviceEnrolledDetails
 
 struct EmmRefreshAuthTokenDetails
     "Refreshed auth token used for setting up EMM."
+
+struct ExternalDriveBackupEligibilityStatusCheckedDetails
+    "Checked external drive backup eligibility status."
+
+    desktop_device_session_info DesktopDeviceSessionLogInfo
+        "Device's session logged information."
+    status ExternalDriveBackupEligibilityStatus
+        "Current eligibility status of external drive backup."
+    number_of_external_drive_backup UInt64
+        "Total number of valid external drive backup for all the team members."
+
+    example default
+        desktop_device_session_info = default
+        status = success
+        number_of_external_drive_backup = 3
+
+struct ExternalDriveBackupStatusChangedDetails
+    "Modified external drive backup."
+
+    desktop_device_session_info DesktopDeviceSessionLogInfo
+        "Device's session logged information."
+    previous_value ExternalDriveBackupStatus
+        "Previous status of this external drive backup."
+    new_value ExternalDriveBackupStatus
+        "Next status of this external drive backup."
+
+    example default
+        desktop_device_session_info = default
+        previous_value = empty
+        new_value = empty
 
 struct AccountCaptureChangeAvailabilityDetails
     "Granted/revoked option to enable account capture on team domains."
@@ -2388,11 +2849,59 @@ struct DomainVerificationRemoveDomainDetails
 struct EnabledDomainInvitesDetails
     "Enabled domain invites."
 
+struct TeamEncryptionKeyCancelKeyDeletionDetails
+    "Canceled team encryption key deletion."
+
+
+    example default
+
+struct TeamEncryptionKeyCreateKeyDetails
+    "Created team encryption key."
+
+
+    example default
+
+struct TeamEncryptionKeyDeleteKeyDetails
+    "Deleted team encryption key."
+
+
+    example default
+
+struct TeamEncryptionKeyDisableKeyDetails
+    "Disabled team encryption key."
+
+
+    example default
+
+struct TeamEncryptionKeyEnableKeyDetails
+    "Enabled team encryption key."
+
+
+    example default
+
+struct TeamEncryptionKeyRotateKeyDetails
+    "Rotated team encryption key."
+
+
+    example default
+
+struct TeamEncryptionKeyScheduleKeyDeletionDetails
+    "Scheduled encryption key deletion."
+
+
+    example default
+
+struct ApplyNamingConventionDetails
+    "Applied naming convention."
+
 struct CreateFolderDetails
     "Created folders."
 
 struct FileAddDetails
     "Added files and/or folders."
+
+struct FileAddFromAutomationDetails
+    "Added files and/or folders from automation."
 
 struct FileCopyDetails
     "Copied files and/or folders."
@@ -2438,6 +2947,9 @@ struct FileMoveDetails
 
 struct FilePermanentlyDeleteDetails
     "Permanently deleted files and/or folders."
+
+
+    example default
 
 struct FilePreviewDetails
     "Previewed files and/or folders."
@@ -2502,6 +3014,39 @@ struct FolderOverviewItemUnpinnedDetails
         folder_overview_location_asset = 3
         pinned_items_asset_indices = [3]
 
+struct ObjectLabelAddedDetails
+    "Added a label."
+
+    label_type LabelType
+        "Labels mark a file or folder."
+
+    example default
+        label_type = test_only
+
+struct ObjectLabelRemovedDetails
+    "Removed a label."
+
+    label_type LabelType
+        "Labels mark a file or folder."
+
+    example default
+        label_type = test_only
+
+struct ObjectLabelUpdatedValueDetails
+    "Updated a label's value."
+
+    label_type LabelType
+        "Labels mark a file or folder."
+
+    example default
+        label_type = test_only
+
+struct OrganizeFolderWithTidyDetails
+    "Organized a folder with multi-file organize."
+
+struct ReplayFileDeleteDetails
+    "Deleted files in Replay."
+
 struct RewindFolderDetails
     "Rewound a folder."
 
@@ -2510,6 +3055,51 @@ struct RewindFolderDetails
 
     example default
         rewind_folder_target_ts_ms = "2017-01-25T15:51:30Z"
+
+struct UndoNamingConventionDetails
+    "Reverted naming convention."
+
+struct UndoOrganizeFolderWithTidyDetails
+    "Removed multi-file organize."
+
+struct UserTagsAddedDetails
+    "Tagged a file."
+
+    values List(String)
+        "values."
+
+    example default
+        values = ["abc"]
+
+struct UserTagsRemovedDetails
+    "Removed tags."
+
+    values List(String)
+        "values."
+
+    example default
+        values = ["abc"]
+
+struct EmailIngestReceiveFileDetails
+    "Received files via Email to Dropbox."
+
+    inbox_name String
+        "Inbox name."
+    attachment_names List(String)
+        "Submitted file names."
+    subject String?
+        "Subject of the email."
+    from_name common.DisplayNameLegacy?
+        "The name as provided by the submitter."
+    from_email EmailAddress?
+        "The email as provided by the submitter."
+
+    example default
+        inbox_name = "abc"
+        attachment_names = ["abc"]
+        subject = "abc"
+        from_name = "John Smith"
+        from_email = "john_smith@acmecorp.com"
 
 struct FileRequestChangeDetails
     "Changed file request."
@@ -2572,9 +3162,9 @@ struct FileRequestReceiveFileDetails
     submitted_file_names List(String)
         "Submitted file names."
     submitter_name common.DisplayNameLegacy?
-        "The name as provided by the submitter. Might be missing due to historical data gap."
+        "The name as provided by the submitter."
     submitter_email EmailAddress?
-        "The email as provided by the submitter. Might be missing due to historical data gap."
+        "The email as provided by the submitter."
 
     example default
         file_request_id = "oaCAVmEyrqYnkZX9955Y"
@@ -2638,7 +3228,7 @@ struct GroupCreateDetails
     "Created group."
 
     is_company_managed Boolean?
-        "Is company managed group. Might be missing due to historical data gap."
+        "Is company managed group."
     join_policy GroupJoinPolicy?
         "Group join policy."
 
@@ -2650,7 +3240,7 @@ struct GroupDeleteDetails
     "Deleted group."
 
     is_company_managed Boolean?
-        "Is company managed group. Might be missing due to historical data gap."
+        "Is company managed group."
 
     example default
         is_company_managed = true
@@ -2662,7 +3252,7 @@ struct GroupJoinPolicyUpdatedDetails
     "Updated group join policy."
 
     is_company_managed Boolean?
-        "Is company managed group. Might be missing due to historical data gap."
+        "Is company managed group."
     join_policy GroupJoinPolicy?
         "Group join policy."
 
@@ -2799,6 +3389,12 @@ struct SsoErrorDetails
     example default
         error_details = default
 
+struct BackupAdminInvitationSentDetails
+    "Invited members to activate Backup."
+
+struct BackupInvitationOpenedDetails
+    "Opened Backup invite."
+
 struct CreateTeamInviteLinkDetails
     "Created team invite link."
 
@@ -2897,6 +3493,18 @@ struct MemberChangeNameDetails
     example default
         new_value = default
         previous_value = default
+
+struct MemberChangeResellerRoleDetails
+    "Changed team member reseller role."
+
+    new_value ResellerRole
+        "New reseller role. This field is relevant when the reseller role is changed."
+    previous_value ResellerRole
+        "Previous reseller role. This field is relevant when the reseller role is changed or when the reseller role is removed."
+
+    example default
+        new_value = not_reseller
+        previous_value = not_reseller
 
 struct MemberChangeStatusDetails
     "Changed member status (invited, joined, suspended, etc.)."
@@ -3253,7 +3861,7 @@ struct PaperDocAddCommentDetails
     event_uuid String
         "Event unique identifier."
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
 
     example default
         event_uuid = "abc"
@@ -3277,9 +3885,9 @@ struct PaperDocChangeSharingPolicyDetails
     event_uuid String
         "Event unique identifier."
     public_sharing_policy String?
-        "Sharing policy with external users. Might be missing due to historical data gap."
+        "Sharing policy with external users."
     team_sharing_policy String?
-        "Sharing policy with team. Might be missing due to historical data gap."
+        "Sharing policy with team."
 
     example default
         event_uuid = "abc"
@@ -3316,7 +3924,7 @@ struct PaperDocDeleteCommentDetails
     event_uuid String
         "Event unique identifier."
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
 
     example default
         event_uuid = "abc"
@@ -3349,7 +3957,7 @@ struct PaperDocEditCommentDetails
     event_uuid String
         "Event unique identifier."
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
 
     example default
         event_uuid = "abc"
@@ -3403,7 +4011,7 @@ struct PaperDocResolveCommentDetails
     event_uuid String
         "Event unique identifier."
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
 
     example default
         event_uuid = "abc"
@@ -3451,7 +4059,7 @@ struct PaperDocUnresolveCommentDetails
     event_uuid String
         "Event unique identifier."
     comment_text String?
-        "Comment text. Might be missing due to historical data gap."
+        "Comment text."
 
     example default
         event_uuid = "abc"
@@ -3595,6 +4203,18 @@ struct PasswordResetDetails
 struct PasswordResetAllDetails
     "Reset all team member passwords."
 
+struct ClassificationCreateReportDetails
+    "Created Classification report."
+
+struct ClassificationCreateReportFailDetails
+    "Couldn't create Classification report."
+
+    failure_reason team.TeamReportFailureReason
+        "Failure reason."
+
+    example default
+        failure_reason = temporary_error
+
 struct EmmCreateExceptionsReportDetails
     "Created EMM-excluded users report."
 
@@ -3712,6 +4332,18 @@ struct OutdatedLinkViewReportFailedDetails
 struct PaperAdminExportStartDetails
     "Exported all team Paper docs."
 
+struct RansomwareAlertCreateReportDetails
+    "Created ransomware report."
+
+struct RansomwareAlertCreateReportFailedDetails
+    "Couldn't generate ransomware report."
+
+    failure_reason team.TeamReportFailureReason
+        "Failure reason."
+
+    example default
+        failure_reason = temporary_error
+
 struct SmartSyncCreateAdminPrivilegeReportDetails
     "Created Smart Sync non-admin devices report."
 
@@ -3808,6 +4440,18 @@ struct NoteShareReceiveDetails
 struct OpenNoteSharedDetails
     "Opened shared Paper doc."
 
+struct ReplayFileSharedLinkCreatedDetails
+    "Created shared link in Replay."
+
+struct ReplayFileSharedLinkModifiedDetails
+    "Modified shared link in Replay."
+
+struct ReplayProjectTeamAddDetails
+    "Added member to Replay Project."
+
+struct ReplayProjectTeamDeleteDetails
+    "Removed member from Replay Project."
+
 struct SfAddGroupDetails
     "Added team to shared folder."
 
@@ -3816,7 +4460,7 @@ struct SfAddGroupDetails
     original_folder_name String
         "Original shared folder name."
     sharing_permission String?
-        "Sharing permission. Might be missing due to historical data gap."
+        "Sharing permission."
     team_name String
         "Team name."
 
@@ -3834,7 +4478,7 @@ struct SfAllowNonMembersToViewSharedLinksDetails
     original_folder_name String
         "Original shared folder name."
     shared_folder_type String?
-        "Shared folder type. Might be missing due to historical data gap."
+        "Shared folder type."
 
     example default
         target_asset_index = 3
@@ -3849,9 +4493,9 @@ struct SfExternalInviteWarnDetails
     original_folder_name String
         "Original shared folder name."
     new_sharing_permission String?
-        "New sharing permission. Might be missing due to historical data gap."
+        "New sharing permission."
     previous_sharing_permission String?
-        "Previous sharing permission. Might be missing due to historical data gap."
+        "Previous sharing permission."
 
     example default
         target_asset_index = 3
@@ -3867,7 +4511,7 @@ struct SfFbInviteDetails
     original_folder_name String
         "Original shared folder name."
     sharing_permission String?
-        "Sharing permission. Might be missing due to historical data gap."
+        "Sharing permission."
 
     example default
         target_asset_index = 3
@@ -3882,9 +4526,9 @@ struct SfFbInviteChangeRoleDetails
     original_folder_name String
         "Original shared folder name."
     previous_sharing_permission String?
-        "Previous sharing permission. Might be missing due to historical data gap."
+        "Previous sharing permission."
     new_sharing_permission String?
-        "New sharing permission. Might be missing due to historical data gap."
+        "New sharing permission."
 
     example default
         target_asset_index = 3
@@ -3933,7 +4577,7 @@ struct SfTeamInviteDetails
     original_folder_name String
         "Original shared folder name."
     sharing_permission String?
-        "Sharing permission. Might be missing due to historical data gap."
+        "Sharing permission."
 
     example default
         target_asset_index = 3
@@ -3948,9 +4592,9 @@ struct SfTeamInviteChangeRoleDetails
     original_folder_name String
         "Original shared folder name."
     new_sharing_permission String?
-        "New sharing permission. Might be missing due to historical data gap."
+        "New sharing permission."
     previous_sharing_permission String?
-        "Previous sharing permission. Might be missing due to historical data gap."
+        "Previous sharing permission."
 
     example default
         target_asset_index = 3
@@ -3980,7 +4624,7 @@ struct SfTeamJoinFromOobLinkDetails
     token_key String?
         "Shared link token key."
     sharing_permission String?
-        "Sharing permission. Might be missing due to historical data gap."
+        "Sharing permission."
 
     example default
         target_asset_index = 3
@@ -4009,7 +4653,7 @@ struct SharedContentAddInviteesDetails
         "A list of invitees."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         invitees = ["john_smith@acmecorp.com"]
 
 struct SharedContentAddLinkExpiryDetails
@@ -4031,7 +4675,7 @@ struct SharedContentAddMemberDetails
         "Shared content access level."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
 
 struct SharedContentChangeDownloadsPolicyDetails
     "Changed whether members can download shared file/folder."
@@ -4056,8 +4700,8 @@ struct SharedContentChangeInviteeRoleDetails
         "The invitee whose role was changed."
 
     example default
-        previous_access_level = viewer_no_comment
-        new_access_level = viewer_no_comment
+        previous_access_level = traverse
+        new_access_level = traverse
         invitee = "john_smith@acmecorp.com"
 
 struct SharedContentChangeLinkAudienceDetails
@@ -4096,8 +4740,8 @@ struct SharedContentChangeMemberRoleDetails
         "New access level."
 
     example default
-        previous_access_level = viewer_no_comment
-        new_access_level = viewer_no_comment
+        previous_access_level = traverse
+        new_access_level = traverse
 
 struct SharedContentChangeViewerInfoPolicyDetails
     "Changed whether members can see who viewed shared file/folder."
@@ -4105,7 +4749,7 @@ struct SharedContentChangeViewerInfoPolicyDetails
     new_value sharing.ViewerInfoPolicy
         "New viewer info policy."
     previous_value sharing.ViewerInfoPolicy?
-        "Previous view info policy. Might be missing due to historical data gap."
+        "Previous view info policy."
 
     example default
         new_value = disabled
@@ -4135,7 +4779,7 @@ struct SharedContentCopyDetails
     example default
         shared_content_link = "abc"
         shared_content_owner = default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         destination_path = "/Contract Work/Product Design"
 
 struct SharedContentDownloadDetails
@@ -4151,7 +4795,7 @@ struct SharedContentDownloadDetails
     example default
         shared_content_link = "abc"
         shared_content_owner = default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
 
 struct SharedContentRelinquishMembershipDetails
     "Left shared file/folder."
@@ -4184,7 +4828,7 @@ struct SharedContentRemoveMemberDetails
         "Shared content access level."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
 
 struct SharedContentRequestAccessDetails
     "Requested access to shared file/folder."
@@ -4204,7 +4848,7 @@ struct SharedContentRestoreInviteesDetails
         "A list of invitees."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         invitees = ["john_smith@acmecorp.com"]
 
 struct SharedContentRestoreMemberDetails
@@ -4214,10 +4858,13 @@ struct SharedContentRestoreMemberDetails
         "Shared content access level."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
 
 struct SharedContentUnshareDetails
     "Unshared file/folder by clearing membership."
+
+
+    example default
 
 struct SharedContentViewDetails
     "Previewed shared file/folder."
@@ -4232,7 +4879,7 @@ struct SharedContentViewDetails
     example default
         shared_content_link = "abc"
         shared_content_owner = default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
 
 struct SharedFolderChangeLinkPolicyDetails
     "Changed who can access shared folder via link."
@@ -4286,7 +4933,7 @@ struct SharedFolderCreateDetails
     "Created shared folder."
 
     target_ns_id NamespaceId?
-        "Target namespace ID. Might be missing due to historical data gap."
+        "Target namespace ID."
 
     example default
         target_ns_id = "1234"
@@ -4301,13 +4948,13 @@ struct SharedFolderNestDetails
     "Changed parent of shared folder."
 
     previous_parent_ns_id NamespaceId?
-        "Previous parent namespace ID. Might be missing due to historical data gap."
+        "Previous parent namespace ID."
     new_parent_ns_id NamespaceId?
-        "New parent namespace ID. Might be missing due to historical data gap."
+        "New parent namespace ID."
     previous_ns_path FilePath?
-        "Previous namespace path. Might be missing due to historical data gap."
+        "Previous namespace path."
     new_ns_path FilePath?
-        "New namespace path. Might be missing due to historical data gap."
+        "New namespace path."
 
     example default
         previous_parent_ns_id = "1234"
@@ -4419,7 +5066,7 @@ struct SharedLinkSettingsAddExpirationDetails
         "New shared content link expiration date. Might be missing due to historical data gap."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         shared_content_link = "abc"
         new_value = "2017-01-25T15:51:30Z"
 
@@ -4432,7 +5079,7 @@ struct SharedLinkSettingsAddPasswordDetails
         "Shared content link."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         shared_content_link = "abc"
 
 struct SharedLinkSettingsAllowDownloadDisabledDetails
@@ -4444,7 +5091,7 @@ struct SharedLinkSettingsAllowDownloadDisabledDetails
         "Shared content link."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         shared_content_link = "abc"
 
 struct SharedLinkSettingsAllowDownloadEnabledDetails
@@ -4456,7 +5103,7 @@ struct SharedLinkSettingsAllowDownloadEnabledDetails
         "Shared content link."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         shared_content_link = "abc"
 
 struct SharedLinkSettingsChangeAudienceDetails
@@ -4472,7 +5119,7 @@ struct SharedLinkSettingsChangeAudienceDetails
         "Previous link audience value."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         shared_content_link = "abc"
         new_value = no_one
         previous_value = no_one
@@ -4490,7 +5137,7 @@ struct SharedLinkSettingsChangeExpirationDetails
         "Previous shared content link expiration date. Might be missing due to historical data gap."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         shared_content_link = "abc"
         new_value = "2017-01-25T15:51:30Z"
         previous_value = "2017-01-25T15:51:30Z"
@@ -4504,7 +5151,7 @@ struct SharedLinkSettingsChangePasswordDetails
         "Shared content link."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         shared_content_link = "abc"
 
 struct SharedLinkSettingsRemoveExpirationDetails
@@ -4518,7 +5165,7 @@ struct SharedLinkSettingsRemoveExpirationDetails
         "Previous shared link expiration date. Might be missing due to historical data gap."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         shared_content_link = "abc"
         previous_value = "2017-01-25T15:51:30Z"
 
@@ -4531,7 +5178,7 @@ struct SharedLinkSettingsRemovePasswordDetails
         "Shared content link."
 
     example default
-        shared_content_access_level = viewer_no_comment
+        shared_content_access_level = traverse
         shared_content_link = "abc"
 
 struct SharedLinkShareDetails
@@ -4835,7 +5482,7 @@ struct SsoAddLogoutUrlDetails
     "Added sign-out URL for SSO."
 
     new_value String?
-        "New single sign-on logout URL. Might be missing due to historical data gap."
+        "New single sign-on logout URL."
 
     example default
         new_value = "abc"
@@ -4870,7 +5517,7 @@ struct SsoChangeLogoutUrlDetails
     previous_value String?
         "Previous single sign-on logout URL. Might be missing due to historical data gap."
     new_value String?
-        "New single sign-on logout URL. Might be missing due to historical data gap."
+        "New single sign-on logout URL."
 
     example default
         previous_value = "abc"
@@ -4972,11 +5619,41 @@ struct AccountCaptureChangePolicyDetails
         new_value = disabled
         previous_value = disabled
 
+struct AdminEmailRemindersChangedDetails
+    "Changed admin reminder settings for requests to join the team."
+
+    new_value AdminEmailRemindersPolicy
+        "To."
+    previous_value AdminEmailRemindersPolicy
+        "From."
+
+    example default
+        new_value = default
+        previous_value = default
+
 struct AllowDownloadDisabledDetails
     "Disabled downloads."
 
 struct AllowDownloadEnabledDetails
     "Enabled downloads."
+
+struct AppPermissionsChangedDetails
+    "Changed app permissions."
+
+    app_name String?
+        "Name of the app."
+    permission AdminConsoleAppPermission?
+        "Permission that was changed."
+    previous_value AdminConsoleAppPolicy
+        "Previous policy."
+    new_value AdminConsoleAppPolicy
+        "New policy."
+
+    example default
+        app_name = "abc"
+        permission = default_for_listed_apps
+        previous_value = default
+        new_value = default
 
 struct CameraUploadsPolicyChangedDetails
     "Changed camera uploads setting for team."
@@ -4990,6 +5667,18 @@ struct CameraUploadsPolicyChangedDetails
         new_value = disabled
         previous_value = disabled
 
+struct CaptureTranscriptPolicyChangedDetails
+    "Changed Capture transcription policy for team."
+
+    new_value CaptureTranscriptPolicy
+        "To."
+    previous_value CaptureTranscriptPolicy
+        "From."
+
+    example default
+        new_value = default
+        previous_value = default
+
 struct ClassificationChangePolicyDetails
     "Changed classification policy for team."
 
@@ -5001,8 +5690,8 @@ struct ClassificationChangePolicyDetails
         "Policy type."
 
     example default
-        previous_value = disabled
-        new_value = disabled
+        previous_value = team_folders
+        new_value = team_folders
         classification_type = pii
 
 struct ComputerBackupPolicyChangedDetails
@@ -5110,6 +5799,30 @@ struct DirectoryRestrictionsAddMembersDetails
 struct DirectoryRestrictionsRemoveMembersDetails
     "Removed members from directory restrictions list."
 
+struct DropboxPasswordsPolicyChangedDetails
+    "Changed Dropbox Passwords policy for team."
+
+    new_value DropboxPasswordsPolicy
+        "To."
+    previous_value DropboxPasswordsPolicy
+        "From."
+
+    example default
+        new_value = default
+        previous_value = default
+
+struct EmailIngestPolicyChangedDetails
+    "Changed email to Dropbox policy for team."
+
+    new_value EmailIngestPolicy
+        "To."
+    previous_value EmailIngestPolicy
+        "From."
+
+    example default
+        new_value = disabled
+        previous_value = disabled
+
 struct EmmAddExceptionDetails
     "Added members to EMM exception list."
 
@@ -5140,6 +5853,18 @@ struct ExtendedVersionHistoryChangePolicyDetails
         new_value = implicitly_limited
         previous_value = implicitly_limited
 
+struct ExternalDriveBackupPolicyChangedDetails
+    "Changed external drive backup policy for team."
+
+    new_value ExternalDriveBackupPolicy
+        "New external drive backup policy."
+    previous_value ExternalDriveBackupPolicy
+        "Previous external drive backup policy."
+
+    example default
+        new_value = default
+        previous_value = default
+
 struct FileCommentsChangePolicyDetails
     "Enabled/disabled commenting on team files."
 
@@ -5163,6 +5888,18 @@ struct FileLockingPolicyChangedDetails
     example default
         new_value = disabled
         previous_value = disabled
+
+struct FileProviderMigrationPolicyChangedDetails
+    "Changed File Provider Migration policy for team."
+
+    new_value team_policies.FileProviderMigrationPolicyState
+        "To."
+    previous_value team_policies.FileProviderMigrationPolicyState
+        "From."
+
+    example default
+        new_value = default
+        previous_value = default
 
 struct FileRequestsChangePolicyDetails
     "Enabled/disabled file requests."
@@ -5189,6 +5926,18 @@ struct FileTransfersPolicyChangedDetails
         "New file transfers policy."
     previous_value FileTransfersPolicy
         "Previous file transfers policy."
+
+    example default
+        new_value = disabled
+        previous_value = disabled
+
+struct FolderLinkRestrictionPolicyChangedDetails
+    "Changed folder link restrictions policy for team."
+
+    new_value FolderLinkRestrictionPolicy
+        "To."
+    previous_value FolderLinkRestrictionPolicy
+        "From."
 
     example default
         new_value = disabled
@@ -5230,6 +5979,18 @@ struct IntegrationPolicyChangedDetails
 
     example default
         integration_name = "abc"
+        new_value = disabled
+        previous_value = disabled
+
+struct InviteAcceptanceEmailPolicyChangedDetails
+    "Changed invite accept email policy for team."
+
+    new_value InviteAcceptanceEmailPolicy
+        "To."
+    previous_value InviteAcceptanceEmailPolicy
+        "From."
+
+    example default
         new_value = disabled
         previous_value = disabled
 
@@ -5469,6 +6230,42 @@ struct SharingChangeFolderJoinPolicyDetails
     example default
         new_value = from_anyone
         previous_value = from_anyone
+
+struct SharingChangeLinkAllowChangeExpirationPolicyDetails
+    "Changed the allow remove or change expiration policy for the links shared outside of the team."
+
+    new_value EnforceLinkPasswordPolicy
+        "To."
+    previous_value EnforceLinkPasswordPolicy?
+        "From."
+
+    example default
+        new_value = optional
+        previous_value = optional
+
+struct SharingChangeLinkDefaultExpirationPolicyDetails
+    "Changed the default expiration for the links shared outside of the team."
+
+    new_value DefaultLinkExpirationDaysPolicy
+        "To."
+    previous_value DefaultLinkExpirationDaysPolicy?
+        "From."
+
+    example default
+        new_value = none
+        previous_value = none
+
+struct SharingChangeLinkEnforcePasswordPolicyDetails
+    "Changed the password requirement for the links shared outside of the team."
+
+    new_value ChangeLinkExpirationPolicy
+        "To."
+    previous_value ChangeLinkExpirationPolicy?
+        "From."
+
+    example default
+        new_value = allowed
+        previous_value = allowed
 
 struct SharingChangeLinkPolicyDetails
     "Changed whether members can share links outside team, and if links are accessible only by team members or anyone by default."
@@ -5728,6 +6525,12 @@ struct WebSessionsChangeIdleLengthPolicyDetails
         new_value = default
         previous_value = default
 
+struct DataResidencyMigrationRequestSuccessfulDetails
+    "Requested data residency migration for team data."
+
+struct DataResidencyMigrationRequestUnsuccessfulDetails
+    "Request for data residency migration for team data has failed."
+
 struct TeamMergeFromDetails
     "Merged another team into this team."
 
@@ -5746,8 +6549,14 @@ struct TeamMergeToDetails
     example default
         team_name = "abc"
 
+struct TeamProfileAddBackgroundDetails
+    "Added team background to display on shared link headers."
+
 struct TeamProfileAddLogoDetails
     "Added team logo to display on shared link headers."
+
+struct TeamProfileChangeBackgroundDetails
+    "Changed team background displayed on shared link headers."
 
 struct TeamProfileChangeDefaultLanguageDetails
     "Changed default language for team."
@@ -5775,6 +6584,9 @@ struct TeamProfileChangeNameDetails
     example default
         previous_value = default
         new_value = default
+
+struct TeamProfileRemoveBackgroundDetails
+    "Removed team background displayed on shared link headers."
 
 struct TeamProfileRemoveLogoDetails
     "Removed team logo displayed on shared link headers."
@@ -6101,6 +6913,12 @@ struct TeamMergeRequestSentShownToSecondaryTeamDetails
 union EventDetails
     "Additional fields depending on the event type."
 
+    admin_alerting_alert_state_changed_details AdminAlertingAlertStateChangedDetails
+    admin_alerting_changed_alert_config_details AdminAlertingChangedAlertConfigDetails
+    admin_alerting_triggered_alert_details AdminAlertingTriggeredAlertDetails
+    ransomware_restore_process_completed_details RansomwareRestoreProcessCompletedDetails
+    ransomware_restore_process_started_details RansomwareRestoreProcessStartedDetails
+    app_blocked_by_permissions_details AppBlockedByPermissionsDetails
     app_link_team_details AppLinkTeamDetails
     app_link_user_details AppLinkUserDetails
     app_unlink_team_details AppUnlinkTeamDetails
@@ -6116,11 +6934,17 @@ union EventDetails
     file_unlike_comment_details FileUnlikeCommentDetails
     file_unresolve_comment_details FileUnresolveCommentDetails
     governance_policy_add_folders_details GovernancePolicyAddFoldersDetails
+    governance_policy_add_folder_failed_details GovernancePolicyAddFolderFailedDetails
+    governance_policy_content_disposed_details GovernancePolicyContentDisposedDetails
     governance_policy_create_details GovernancePolicyCreateDetails
     governance_policy_delete_details GovernancePolicyDeleteDetails
     governance_policy_edit_details_details GovernancePolicyEditDetailsDetails
     governance_policy_edit_duration_details GovernancePolicyEditDurationDetails
+    governance_policy_export_created_details GovernancePolicyExportCreatedDetails
+    governance_policy_export_removed_details GovernancePolicyExportRemovedDetails
     governance_policy_remove_folders_details GovernancePolicyRemoveFoldersDetails
+    governance_policy_report_created_details GovernancePolicyReportCreatedDetails
+    governance_policy_zip_part_downloaded_details GovernancePolicyZipPartDownloadedDetails
     legal_holds_activate_a_hold_details LegalHoldsActivateAHoldDetails
     legal_holds_add_members_details LegalHoldsAddMembersDetails
     legal_holds_change_hold_details_details LegalHoldsChangeHoldDetailsDetails
@@ -6146,6 +6970,8 @@ union EventDetails
     dropbox_passwords_exported_details DropboxPasswordsExportedDetails
     dropbox_passwords_new_device_enrolled_details DropboxPasswordsNewDeviceEnrolledDetails
     emm_refresh_auth_token_details EmmRefreshAuthTokenDetails
+    external_drive_backup_eligibility_status_checked_details ExternalDriveBackupEligibilityStatusCheckedDetails
+    external_drive_backup_status_changed_details ExternalDriveBackupStatusChangedDetails
     account_capture_change_availability_details AccountCaptureChangeAvailabilityDetails
     account_capture_migrate_account_details AccountCaptureMigrateAccountDetails
     account_capture_notification_emails_sent_details AccountCaptureNotificationEmailsSentDetails
@@ -6161,8 +6987,17 @@ union EventDetails
     domain_verification_add_domain_success_details DomainVerificationAddDomainSuccessDetails
     domain_verification_remove_domain_details DomainVerificationRemoveDomainDetails
     enabled_domain_invites_details EnabledDomainInvitesDetails
+    team_encryption_key_cancel_key_deletion_details TeamEncryptionKeyCancelKeyDeletionDetails
+    team_encryption_key_create_key_details TeamEncryptionKeyCreateKeyDetails
+    team_encryption_key_delete_key_details TeamEncryptionKeyDeleteKeyDetails
+    team_encryption_key_disable_key_details TeamEncryptionKeyDisableKeyDetails
+    team_encryption_key_enable_key_details TeamEncryptionKeyEnableKeyDetails
+    team_encryption_key_rotate_key_details TeamEncryptionKeyRotateKeyDetails
+    team_encryption_key_schedule_key_deletion_details TeamEncryptionKeyScheduleKeyDeletionDetails
+    apply_naming_convention_details ApplyNamingConventionDetails
     create_folder_details CreateFolderDetails
     file_add_details FileAddDetails
+    file_add_from_automation_details FileAddFromAutomationDetails
     file_copy_details FileCopyDetails
     file_delete_details FileDeleteDetails
     file_download_details FileDownloadDetails
@@ -6180,7 +7015,17 @@ union EventDetails
     folder_overview_description_changed_details FolderOverviewDescriptionChangedDetails
     folder_overview_item_pinned_details FolderOverviewItemPinnedDetails
     folder_overview_item_unpinned_details FolderOverviewItemUnpinnedDetails
+    object_label_added_details ObjectLabelAddedDetails
+    object_label_removed_details ObjectLabelRemovedDetails
+    object_label_updated_value_details ObjectLabelUpdatedValueDetails
+    organize_folder_with_tidy_details OrganizeFolderWithTidyDetails
+    replay_file_delete_details ReplayFileDeleteDetails
     rewind_folder_details RewindFolderDetails
+    undo_naming_convention_details UndoNamingConventionDetails
+    undo_organize_folder_with_tidy_details UndoOrganizeFolderWithTidyDetails
+    user_tags_added_details UserTagsAddedDetails
+    user_tags_removed_details UserTagsRemovedDetails
+    email_ingest_receive_file_details EmailIngestReceiveFileDetails
     file_request_change_details FileRequestChangeDetails
     file_request_close_details FileRequestCloseDetails
     file_request_create_details FileRequestCreateDetails
@@ -6211,6 +7056,8 @@ union EventDetails
     sign_in_as_session_end_details SignInAsSessionEndDetails
     sign_in_as_session_start_details SignInAsSessionStartDetails
     sso_error_details SsoErrorDetails
+    backup_admin_invitation_sent_details BackupAdminInvitationSentDetails
+    backup_invitation_opened_details BackupInvitationOpenedDetails
     create_team_invite_link_details CreateTeamInviteLinkDetails
     delete_team_invite_link_details DeleteTeamInviteLinkDetails
     member_add_external_id_details MemberAddExternalIdDetails
@@ -6220,6 +7067,7 @@ union EventDetails
     member_change_external_id_details MemberChangeExternalIdDetails
     member_change_membership_type_details MemberChangeMembershipTypeDetails
     member_change_name_details MemberChangeNameDetails
+    member_change_reseller_role_details MemberChangeResellerRoleDetails
     member_change_status_details MemberChangeStatusDetails
     member_delete_manual_contacts_details MemberDeleteManualContactsDetails
     member_delete_profile_photo_details MemberDeleteProfilePhotoDetails
@@ -6288,6 +7136,8 @@ union EventDetails
     password_change_details PasswordChangeDetails
     password_reset_details PasswordResetDetails
     password_reset_all_details PasswordResetAllDetails
+    classification_create_report_details ClassificationCreateReportDetails
+    classification_create_report_fail_details ClassificationCreateReportFailDetails
     emm_create_exceptions_report_details EmmCreateExceptionsReportDetails
     emm_create_usage_report_details EmmCreateUsageReportDetails
     export_members_report_details ExportMembersReportDetails
@@ -6303,6 +7153,8 @@ union EventDetails
     outdated_link_view_create_report_details OutdatedLinkViewCreateReportDetails
     outdated_link_view_report_failed_details OutdatedLinkViewReportFailedDetails
     paper_admin_export_start_details PaperAdminExportStartDetails
+    ransomware_alert_create_report_details RansomwareAlertCreateReportDetails
+    ransomware_alert_create_report_failed_details RansomwareAlertCreateReportFailedDetails
     smart_sync_create_admin_privilege_report_details SmartSyncCreateAdminPrivilegeReportDetails
     team_activity_create_report_details TeamActivityCreateReportDetails
     team_activity_create_report_fail_details TeamActivityCreateReportFailDetails
@@ -6318,6 +7170,10 @@ union EventDetails
     note_shared_details NoteSharedDetails
     note_share_receive_details NoteShareReceiveDetails
     open_note_shared_details OpenNoteSharedDetails
+    replay_file_shared_link_created_details ReplayFileSharedLinkCreatedDetails
+    replay_file_shared_link_modified_details ReplayFileSharedLinkModifiedDetails
+    replay_project_team_add_details ReplayProjectTeamAddDetails
+    replay_project_team_delete_details ReplayProjectTeamDeleteDetails
     sf_add_group_details SfAddGroupDetails
     sf_allow_non_members_to_view_shared_links_details SfAllowNonMembersToViewSharedLinksDetails
     sf_external_invite_warn_details SfExternalInviteWarnDetails
@@ -6429,9 +7285,12 @@ union EventDetails
     team_folder_rename_details TeamFolderRenameDetails
     team_selective_sync_settings_changed_details TeamSelectiveSyncSettingsChangedDetails
     account_capture_change_policy_details AccountCaptureChangePolicyDetails
+    admin_email_reminders_changed_details AdminEmailRemindersChangedDetails
     allow_download_disabled_details AllowDownloadDisabledDetails
     allow_download_enabled_details AllowDownloadEnabledDetails
+    app_permissions_changed_details AppPermissionsChangedDetails
     camera_uploads_policy_changed_details CameraUploadsPolicyChangedDetails
+    capture_transcript_policy_changed_details CaptureTranscriptPolicyChangedDetails
     classification_change_policy_details ClassificationChangePolicyDetails
     computer_backup_policy_changed_details ComputerBackupPolicyChangedDetails
     content_administration_policy_changed_details ContentAdministrationPolicyChangedDetails
@@ -6445,19 +7304,25 @@ union EventDetails
     device_approvals_remove_exception_details DeviceApprovalsRemoveExceptionDetails
     directory_restrictions_add_members_details DirectoryRestrictionsAddMembersDetails
     directory_restrictions_remove_members_details DirectoryRestrictionsRemoveMembersDetails
+    dropbox_passwords_policy_changed_details DropboxPasswordsPolicyChangedDetails
+    email_ingest_policy_changed_details EmailIngestPolicyChangedDetails
     emm_add_exception_details EmmAddExceptionDetails
     emm_change_policy_details EmmChangePolicyDetails
     emm_remove_exception_details EmmRemoveExceptionDetails
     extended_version_history_change_policy_details ExtendedVersionHistoryChangePolicyDetails
+    external_drive_backup_policy_changed_details ExternalDriveBackupPolicyChangedDetails
     file_comments_change_policy_details FileCommentsChangePolicyDetails
     file_locking_policy_changed_details FileLockingPolicyChangedDetails
+    file_provider_migration_policy_changed_details FileProviderMigrationPolicyChangedDetails
     file_requests_change_policy_details FileRequestsChangePolicyDetails
     file_requests_emails_enabled_details FileRequestsEmailsEnabledDetails
     file_requests_emails_restricted_to_team_only_details FileRequestsEmailsRestrictedToTeamOnlyDetails
     file_transfers_policy_changed_details FileTransfersPolicyChangedDetails
+    folder_link_restriction_policy_changed_details FolderLinkRestrictionPolicyChangedDetails
     google_sso_change_policy_details GoogleSsoChangePolicyDetails
     group_user_management_change_policy_details GroupUserManagementChangePolicyDetails
     integration_policy_changed_details IntegrationPolicyChangedDetails
+    invite_acceptance_email_policy_changed_details InviteAcceptanceEmailPolicyChangedDetails
     member_requests_change_policy_details MemberRequestsChangePolicyDetails
     member_send_invite_policy_changed_details MemberSendInvitePolicyChangedDetails
     member_space_limits_add_exception_details MemberSpaceLimitsAddExceptionDetails
@@ -6481,6 +7346,9 @@ union EventDetails
     rewind_policy_changed_details RewindPolicyChangedDetails
     send_for_signature_policy_changed_details SendForSignaturePolicyChangedDetails
     sharing_change_folder_join_policy_details SharingChangeFolderJoinPolicyDetails
+    sharing_change_link_allow_change_expiration_policy_details SharingChangeLinkAllowChangeExpirationPolicyDetails
+    sharing_change_link_default_expiration_policy_details SharingChangeLinkDefaultExpirationPolicyDetails
+    sharing_change_link_enforce_password_policy_details SharingChangeLinkEnforcePasswordPolicyDetails
     sharing_change_link_policy_details SharingChangeLinkPolicyDetails
     sharing_change_member_policy_details SharingChangeMemberPolicyDetails
     showcase_change_download_policy_details ShowcaseChangeDownloadPolicyDetails
@@ -6504,12 +7372,17 @@ union EventDetails
     web_sessions_change_active_session_limit_details WebSessionsChangeActiveSessionLimitDetails
     web_sessions_change_fixed_length_policy_details WebSessionsChangeFixedLengthPolicyDetails
     web_sessions_change_idle_length_policy_details WebSessionsChangeIdleLengthPolicyDetails
+    data_residency_migration_request_successful_details DataResidencyMigrationRequestSuccessfulDetails
+    data_residency_migration_request_unsuccessful_details DataResidencyMigrationRequestUnsuccessfulDetails
     team_merge_from_details TeamMergeFromDetails
     team_merge_to_details TeamMergeToDetails
+    team_profile_add_background_details TeamProfileAddBackgroundDetails
     team_profile_add_logo_details TeamProfileAddLogoDetails
+    team_profile_change_background_details TeamProfileChangeBackgroundDetails
     team_profile_change_default_language_details TeamProfileChangeDefaultLanguageDetails
     team_profile_change_logo_details TeamProfileChangeLogoDetails
     team_profile_change_name_details TeamProfileChangeNameDetails
+    team_profile_remove_background_details TeamProfileRemoveBackgroundDetails
     team_profile_remove_logo_details TeamProfileRemoveLogoDetails
     tfa_add_backup_phone_details TfaAddBackupPhoneDetails
     tfa_add_security_key_details TfaAddSecurityKeyDetails
@@ -6553,6 +7426,42 @@ union EventDetails
 ##############
 # Event Type
 ##############
+
+struct AdminAlertingAlertStateChangedType
+    description String
+
+    example default
+        description = "(admin_alerting) Changed an alert state"
+
+struct AdminAlertingChangedAlertConfigType
+    description String
+
+    example default
+        description = "(admin_alerting) Changed an alert setting"
+
+struct AdminAlertingTriggeredAlertType
+    description String
+
+    example default
+        description = "(admin_alerting) Triggered security alert"
+
+struct RansomwareRestoreProcessCompletedType
+    description String
+
+    example default
+        description = "(admin_alerting) Completed ransomware restore process"
+
+struct RansomwareRestoreProcessStartedType
+    description String
+
+    example default
+        description = "(admin_alerting) Started ransomware restore process"
+
+struct AppBlockedByPermissionsType
+    description String
+
+    example default
+        description = "(apps) Failed to connect app for member"
 
 struct AppLinkTeamType
     description String
@@ -6644,6 +7553,18 @@ struct GovernancePolicyAddFoldersType
     example default
         description = "(data_governance) Added folders to policy"
 
+struct GovernancePolicyAddFolderFailedType
+    description String
+
+    example default
+        description = "(data_governance) Couldn't add a folder to a policy"
+
+struct GovernancePolicyContentDisposedType
+    description String
+
+    example default
+        description = "(data_governance) Content disposed"
+
 struct GovernancePolicyCreateType
     description String
 
@@ -6668,11 +7589,35 @@ struct GovernancePolicyEditDurationType
     example default
         description = "(data_governance) Changed policy duration"
 
+struct GovernancePolicyExportCreatedType
+    description String
+
+    example default
+        description = "(data_governance) Created a policy download"
+
+struct GovernancePolicyExportRemovedType
+    description String
+
+    example default
+        description = "(data_governance) Removed a policy download"
+
 struct GovernancePolicyRemoveFoldersType
     description String
 
     example default
         description = "(data_governance) Removed folders from policy"
+
+struct GovernancePolicyReportCreatedType
+    description String
+
+    example default
+        description = "(data_governance) Created a summary report for a policy"
+
+struct GovernancePolicyZipPartDownloadedType
+    description String
+
+    example default
+        description = "(data_governance) Downloaded content from a policy"
 
 struct LegalHoldsActivateAHoldType
     description String
@@ -6824,6 +7769,18 @@ struct EmmRefreshAuthTokenType
     example default
         description = "(devices) Refreshed auth token used for setting up EMM"
 
+struct ExternalDriveBackupEligibilityStatusCheckedType
+    description String
+
+    example default
+        description = "(devices) Checked external drive backup eligibility status"
+
+struct ExternalDriveBackupStatusChangedType
+    description String
+
+    example default
+        description = "(devices) Modified external drive backup"
+
 struct AccountCaptureChangeAvailabilityType
     description String
 
@@ -6914,6 +7871,54 @@ struct EnabledDomainInvitesType
     example default
         description = "(domains) Enabled domain invites (deprecated, no longer logged)"
 
+struct TeamEncryptionKeyCancelKeyDeletionType
+    description String
+
+    example default
+        description = "(encryption) Canceled team encryption key deletion"
+
+struct TeamEncryptionKeyCreateKeyType
+    description String
+
+    example default
+        description = "(encryption) Created team encryption key"
+
+struct TeamEncryptionKeyDeleteKeyType
+    description String
+
+    example default
+        description = "(encryption) Deleted team encryption key"
+
+struct TeamEncryptionKeyDisableKeyType
+    description String
+
+    example default
+        description = "(encryption) Disabled team encryption key"
+
+struct TeamEncryptionKeyEnableKeyType
+    description String
+
+    example default
+        description = "(encryption) Enabled team encryption key"
+
+struct TeamEncryptionKeyRotateKeyType
+    description String
+
+    example default
+        description = "(encryption) Rotated team encryption key (deprecated, no longer logged)"
+
+struct TeamEncryptionKeyScheduleKeyDeletionType
+    description String
+
+    example default
+        description = "(encryption) Scheduled encryption key deletion"
+
+struct ApplyNamingConventionType
+    description String
+
+    example default
+        description = "(file_operations) Applied naming convention"
+
 struct CreateFolderType
     description String
 
@@ -6925,6 +7930,12 @@ struct FileAddType
 
     example default
         description = "(file_operations) Added files and/or folders"
+
+struct FileAddFromAutomationType
+    description String
+
+    example default
+        description = "(file_operations) Added files and/or folders from automation"
 
 struct FileCopyType
     description String
@@ -7028,11 +8039,71 @@ struct FolderOverviewItemUnpinnedType
     example default
         description = "(file_operations) Unpinned item from folder overview"
 
+struct ObjectLabelAddedType
+    description String
+
+    example default
+        description = "(file_operations) Added a label"
+
+struct ObjectLabelRemovedType
+    description String
+
+    example default
+        description = "(file_operations) Removed a label"
+
+struct ObjectLabelUpdatedValueType
+    description String
+
+    example default
+        description = "(file_operations) Updated a label's value"
+
+struct OrganizeFolderWithTidyType
+    description String
+
+    example default
+        description = "(file_operations) Organized a folder with multi-file organize"
+
+struct ReplayFileDeleteType
+    description String
+
+    example default
+        description = "(file_operations) Deleted files in Replay"
+
 struct RewindFolderType
     description String
 
     example default
         description = "(file_operations) Rewound a folder"
+
+struct UndoNamingConventionType
+    description String
+
+    example default
+        description = "(file_operations) Reverted naming convention"
+
+struct UndoOrganizeFolderWithTidyType
+    description String
+
+    example default
+        description = "(file_operations) Removed multi-file organize"
+
+struct UserTagsAddedType
+    description String
+
+    example default
+        description = "(file_operations) Tagged a file"
+
+struct UserTagsRemovedType
+    description String
+
+    example default
+        description = "(file_operations) Removed tags"
+
+struct EmailIngestReceiveFileType
+    description String
+
+    example default
+        description = "(file_requests) Received files via Email to Dropbox"
 
 struct FileRequestChangeType
     description String
@@ -7214,6 +8285,18 @@ struct SsoErrorType
     example default
         description = "(logins) Failed to sign in via SSO (deprecated, replaced by 'Failed to sign in')"
 
+struct BackupAdminInvitationSentType
+    description String
+
+    example default
+        description = "(members) Invited members to activate Backup"
+
+struct BackupInvitationOpenedType
+    description String
+
+    example default
+        description = "(members) Opened Backup invite"
+
 struct CreateTeamInviteLinkType
     description String
 
@@ -7267,6 +8350,12 @@ struct MemberChangeNameType
 
     example default
         description = "(members) Changed team member name"
+
+struct MemberChangeResellerRoleType
+    description String
+
+    example default
+        description = "(members) Changed team member reseller role"
 
 struct MemberChangeStatusType
     description String
@@ -7676,6 +8765,18 @@ struct PasswordResetAllType
     example default
         description = "(passwords) Reset all team member passwords"
 
+struct ClassificationCreateReportType
+    description String
+
+    example default
+        description = "(reports) Created Classification report"
+
+struct ClassificationCreateReportFailType
+    description String
+
+    example default
+        description = "(reports) Couldn't create Classification report"
+
 struct EmmCreateExceptionsReportType
     description String
 
@@ -7766,6 +8867,18 @@ struct PaperAdminExportStartType
     example default
         description = "(reports) Exported all team Paper docs"
 
+struct RansomwareAlertCreateReportType
+    description String
+
+    example default
+        description = "(reports) Created ransomware report"
+
+struct RansomwareAlertCreateReportFailedType
+    description String
+
+    example default
+        description = "(reports) Couldn't generate ransomware report"
+
 struct SmartSyncCreateAdminPrivilegeReportType
     description String
 
@@ -7855,6 +8968,30 @@ struct OpenNoteSharedType
 
     example default
         description = "(sharing) Opened shared Paper doc (deprecated, no longer logged)"
+
+struct ReplayFileSharedLinkCreatedType
+    description String
+
+    example default
+        description = "(sharing) Created shared link in Replay"
+
+struct ReplayFileSharedLinkModifiedType
+    description String
+
+    example default
+        description = "(sharing) Modified shared link in Replay"
+
+struct ReplayProjectTeamAddType
+    description String
+
+    example default
+        description = "(sharing) Added member to Replay Project"
+
+struct ReplayProjectTeamDeleteType
+    description String
+
+    example default
+        description = "(sharing) Removed member from Replay Project"
 
 struct SfAddGroupType
     description String
@@ -8522,6 +9659,12 @@ struct AccountCaptureChangePolicyType
     example default
         description = "(team_policies) Changed account capture setting on team domain"
 
+struct AdminEmailRemindersChangedType
+    description String
+
+    example default
+        description = "(team_policies) Changed admin reminder settings for requests to join the team"
+
 struct AllowDownloadDisabledType
     description String
 
@@ -8534,11 +9677,23 @@ struct AllowDownloadEnabledType
     example default
         description = "(team_policies) Enabled downloads (deprecated, no longer logged)"
 
+struct AppPermissionsChangedType
+    description String
+
+    example default
+        description = "(team_policies) Changed app permissions"
+
 struct CameraUploadsPolicyChangedType
     description String
 
     example default
         description = "(team_policies) Changed camera uploads setting for team"
+
+struct CaptureTranscriptPolicyChangedType
+    description String
+
+    example default
+        description = "(team_policies) Changed Capture transcription policy for team"
 
 struct ClassificationChangePolicyType
     description String
@@ -8618,6 +9773,18 @@ struct DirectoryRestrictionsRemoveMembersType
     example default
         description = "(team_policies) Removed members from directory restrictions list"
 
+struct DropboxPasswordsPolicyChangedType
+    description String
+
+    example default
+        description = "(team_policies) Changed Dropbox Passwords policy for team"
+
+struct EmailIngestPolicyChangedType
+    description String
+
+    example default
+        description = "(team_policies) Changed email to Dropbox policy for team"
+
 struct EmmAddExceptionType
     description String
 
@@ -8642,6 +9809,12 @@ struct ExtendedVersionHistoryChangePolicyType
     example default
         description = "(team_policies) Accepted/opted out of extended version history"
 
+struct ExternalDriveBackupPolicyChangedType
+    description String
+
+    example default
+        description = "(team_policies) Changed external drive backup policy for team"
+
 struct FileCommentsChangePolicyType
     description String
 
@@ -8653,6 +9826,12 @@ struct FileLockingPolicyChangedType
 
     example default
         description = "(team_policies) Changed file locking policy for team"
+
+struct FileProviderMigrationPolicyChangedType
+    description String
+
+    example default
+        description = "(team_policies) Changed File Provider Migration policy for team"
 
 struct FileRequestsChangePolicyType
     description String
@@ -8678,6 +9857,12 @@ struct FileTransfersPolicyChangedType
     example default
         description = "(team_policies) Changed file transfers policy for team"
 
+struct FolderLinkRestrictionPolicyChangedType
+    description String
+
+    example default
+        description = "(team_policies) Changed folder link restrictions policy for team"
+
 struct GoogleSsoChangePolicyType
     description String
 
@@ -8695,6 +9880,12 @@ struct IntegrationPolicyChangedType
 
     example default
         description = "(team_policies) Changed integration policy for team"
+
+struct InviteAcceptanceEmailPolicyChangedType
+    description String
+
+    example default
+        description = "(team_policies) Changed invite accept email policy for team"
 
 struct MemberRequestsChangePolicyType
     description String
@@ -8834,6 +10025,24 @@ struct SharingChangeFolderJoinPolicyType
     example default
         description = "(team_policies) Changed whether team members can join shared folders owned outside team"
 
+struct SharingChangeLinkAllowChangeExpirationPolicyType
+    description String
+
+    example default
+        description = "(team_policies) Changed the allow remove or change expiration policy for the links shared outside of the team"
+
+struct SharingChangeLinkDefaultExpirationPolicyType
+    description String
+
+    example default
+        description = "(team_policies) Changed the default expiration for the links shared outside of the team"
+
+struct SharingChangeLinkEnforcePasswordPolicyType
+    description String
+
+    example default
+        description = "(team_policies) Changed the password requirement for the links shared outside of the team"
+
 struct SharingChangeLinkPolicyType
     description String
 
@@ -8972,6 +10181,18 @@ struct WebSessionsChangeIdleLengthPolicyType
     example default
         description = "(team_policies) Changed how long team members can be idle while signed in to Dropbox.com"
 
+struct DataResidencyMigrationRequestSuccessfulType
+    description String
+
+    example default
+        description = "(team_profile) Requested data residency migration for team data"
+
+struct DataResidencyMigrationRequestUnsuccessfulType
+    description String
+
+    example default
+        description = "(team_profile) Request for data residency migration for team data has failed"
+
 struct TeamMergeFromType
     description String
 
@@ -8984,11 +10205,23 @@ struct TeamMergeToType
     example default
         description = "(team_profile) Merged this team into another team"
 
+struct TeamProfileAddBackgroundType
+    description String
+
+    example default
+        description = "(team_profile) Added team background to display on shared link headers"
+
 struct TeamProfileAddLogoType
     description String
 
     example default
         description = "(team_profile) Added team logo to display on shared link headers"
+
+struct TeamProfileChangeBackgroundType
+    description String
+
+    example default
+        description = "(team_profile) Changed team background displayed on shared link headers"
 
 struct TeamProfileChangeDefaultLanguageType
     description String
@@ -9007,6 +10240,12 @@ struct TeamProfileChangeNameType
 
     example default
         description = "(team_profile) Changed team name"
+
+struct TeamProfileRemoveBackgroundType
+    description String
+
+    example default
+        description = "(team_profile) Removed team background displayed on shared link headers"
 
 struct TeamProfileRemoveLogoType
     description String
@@ -9210,6 +10449,18 @@ struct TeamMergeRequestSentShownToSecondaryTeamType
 union EventType
     "The type of the event with description."
 
+    admin_alerting_alert_state_changed AdminAlertingAlertStateChangedType
+        "(admin_alerting) Changed an alert state"
+    admin_alerting_changed_alert_config AdminAlertingChangedAlertConfigType
+        "(admin_alerting) Changed an alert setting"
+    admin_alerting_triggered_alert AdminAlertingTriggeredAlertType
+        "(admin_alerting) Triggered security alert"
+    ransomware_restore_process_completed RansomwareRestoreProcessCompletedType
+        "(admin_alerting) Completed ransomware restore process"
+    ransomware_restore_process_started RansomwareRestoreProcessStartedType
+        "(admin_alerting) Started ransomware restore process"
+    app_blocked_by_permissions AppBlockedByPermissionsType
+        "(apps) Failed to connect app for member"
     app_link_team AppLinkTeamType
         "(apps) Linked app for team"
     app_link_user AppLinkUserType
@@ -9240,6 +10491,10 @@ union EventType
         "(comments) Unresolved file comment"
     governance_policy_add_folders GovernancePolicyAddFoldersType
         "(data_governance) Added folders to policy"
+    governance_policy_add_folder_failed GovernancePolicyAddFolderFailedType
+        "(data_governance) Couldn't add a folder to a policy"
+    governance_policy_content_disposed GovernancePolicyContentDisposedType
+        "(data_governance) Content disposed"
     governance_policy_create GovernancePolicyCreateType
         "(data_governance) Activated a new policy"
     governance_policy_delete GovernancePolicyDeleteType
@@ -9248,8 +10503,16 @@ union EventType
         "(data_governance) Edited policy"
     governance_policy_edit_duration GovernancePolicyEditDurationType
         "(data_governance) Changed policy duration"
+    governance_policy_export_created GovernancePolicyExportCreatedType
+        "(data_governance) Created a policy download"
+    governance_policy_export_removed GovernancePolicyExportRemovedType
+        "(data_governance) Removed a policy download"
     governance_policy_remove_folders GovernancePolicyRemoveFoldersType
         "(data_governance) Removed folders from policy"
+    governance_policy_report_created GovernancePolicyReportCreatedType
+        "(data_governance) Created a summary report for a policy"
+    governance_policy_zip_part_downloaded GovernancePolicyZipPartDownloadedType
+        "(data_governance) Downloaded content from a policy"
     legal_holds_activate_a_hold LegalHoldsActivateAHoldType
         "(data_governance) Activated a hold"
     legal_holds_add_members LegalHoldsAddMembersType
@@ -9300,6 +10563,10 @@ union EventType
         "(devices) Enrolled new Dropbox Passwords device"
     emm_refresh_auth_token EmmRefreshAuthTokenType
         "(devices) Refreshed auth token used for setting up EMM"
+    external_drive_backup_eligibility_status_checked ExternalDriveBackupEligibilityStatusCheckedType
+        "(devices) Checked external drive backup eligibility status"
+    external_drive_backup_status_changed ExternalDriveBackupStatusChangedType
+        "(devices) Modified external drive backup"
     account_capture_change_availability AccountCaptureChangeAvailabilityType
         "(domains) Granted/revoked option to enable account capture on team domains"
     account_capture_migrate_account AccountCaptureMigrateAccountType
@@ -9330,10 +10597,28 @@ union EventType
         "(domains) Removed domain from list of verified team domains"
     enabled_domain_invites EnabledDomainInvitesType
         "(domains) Enabled domain invites (deprecated, no longer logged)"
+    team_encryption_key_cancel_key_deletion TeamEncryptionKeyCancelKeyDeletionType
+        "(encryption) Canceled team encryption key deletion"
+    team_encryption_key_create_key TeamEncryptionKeyCreateKeyType
+        "(encryption) Created team encryption key"
+    team_encryption_key_delete_key TeamEncryptionKeyDeleteKeyType
+        "(encryption) Deleted team encryption key"
+    team_encryption_key_disable_key TeamEncryptionKeyDisableKeyType
+        "(encryption) Disabled team encryption key"
+    team_encryption_key_enable_key TeamEncryptionKeyEnableKeyType
+        "(encryption) Enabled team encryption key"
+    team_encryption_key_rotate_key TeamEncryptionKeyRotateKeyType
+        "(encryption) Rotated team encryption key (deprecated, no longer logged)"
+    team_encryption_key_schedule_key_deletion TeamEncryptionKeyScheduleKeyDeletionType
+        "(encryption) Scheduled encryption key deletion"
+    apply_naming_convention ApplyNamingConventionType
+        "(file_operations) Applied naming convention"
     create_folder CreateFolderType
         "(file_operations) Created folders (deprecated, no longer logged)"
     file_add FileAddType
         "(file_operations) Added files and/or folders"
+    file_add_from_automation FileAddFromAutomationType
+        "(file_operations) Added files and/or folders from automation"
     file_copy FileCopyType
         "(file_operations) Copied files and/or folders"
     file_delete FileDeleteType
@@ -9368,8 +10653,28 @@ union EventType
         "(file_operations) Pinned item to folder overview"
     folder_overview_item_unpinned FolderOverviewItemUnpinnedType
         "(file_operations) Unpinned item from folder overview"
+    object_label_added ObjectLabelAddedType
+        "(file_operations) Added a label"
+    object_label_removed ObjectLabelRemovedType
+        "(file_operations) Removed a label"
+    object_label_updated_value ObjectLabelUpdatedValueType
+        "(file_operations) Updated a label's value"
+    organize_folder_with_tidy OrganizeFolderWithTidyType
+        "(file_operations) Organized a folder with multi-file organize"
+    replay_file_delete ReplayFileDeleteType
+        "(file_operations) Deleted files in Replay"
     rewind_folder RewindFolderType
         "(file_operations) Rewound a folder"
+    undo_naming_convention UndoNamingConventionType
+        "(file_operations) Reverted naming convention"
+    undo_organize_folder_with_tidy UndoOrganizeFolderWithTidyType
+        "(file_operations) Removed multi-file organize"
+    user_tags_added UserTagsAddedType
+        "(file_operations) Tagged a file"
+    user_tags_removed UserTagsRemovedType
+        "(file_operations) Removed tags"
+    email_ingest_receive_file EmailIngestReceiveFileType
+        "(file_requests) Received files via Email to Dropbox"
     file_request_change FileRequestChangeType
         "(file_requests) Changed file request"
     file_request_close FileRequestCloseType
@@ -9430,6 +10735,10 @@ union EventType
         "(logins) Started admin sign-in-as session"
     sso_error SsoErrorType
         "(logins) Failed to sign in via SSO (deprecated, replaced by 'Failed to sign in')"
+    backup_admin_invitation_sent BackupAdminInvitationSentType
+        "(members) Invited members to activate Backup"
+    backup_invitation_opened BackupInvitationOpenedType
+        "(members) Opened Backup invite"
     create_team_invite_link CreateTeamInviteLinkType
         "(members) Created team invite link"
     delete_team_invite_link DeleteTeamInviteLinkType
@@ -9448,6 +10757,8 @@ union EventType
         "(members) Changed membership type (limited/full) of member (deprecated, no longer logged)"
     member_change_name MemberChangeNameType
         "(members) Changed team member name"
+    member_change_reseller_role MemberChangeResellerRoleType
+        "(members) Changed team member reseller role"
     member_change_status MemberChangeStatusType
         "(members) Changed member status (invited, joined, suspended, etc.)"
     member_delete_manual_contacts MemberDeleteManualContactsType
@@ -9584,6 +10895,10 @@ union EventType
         "(passwords) Reset password"
     password_reset_all PasswordResetAllType
         "(passwords) Reset all team member passwords"
+    classification_create_report ClassificationCreateReportType
+        "(reports) Created Classification report"
+    classification_create_report_fail ClassificationCreateReportFailType
+        "(reports) Couldn't create Classification report"
     emm_create_exceptions_report EmmCreateExceptionsReportType
         "(reports) Created EMM-excluded users report"
     emm_create_usage_report EmmCreateUsageReportType
@@ -9614,6 +10929,10 @@ union EventType
         "(reports) Couldn't create report: Views of old links"
     paper_admin_export_start PaperAdminExportStartType
         "(reports) Exported all team Paper docs"
+    ransomware_alert_create_report RansomwareAlertCreateReportType
+        "(reports) Created ransomware report"
+    ransomware_alert_create_report_failed RansomwareAlertCreateReportFailedType
+        "(reports) Couldn't generate ransomware report"
     smart_sync_create_admin_privilege_report SmartSyncCreateAdminPrivilegeReportType
         "(reports) Created Smart Sync non-admin devices report"
     team_activity_create_report TeamActivityCreateReportType
@@ -9644,6 +10963,14 @@ union EventType
         "(sharing) Shared received Paper doc (deprecated, no longer logged)"
     open_note_shared OpenNoteSharedType
         "(sharing) Opened shared Paper doc (deprecated, no longer logged)"
+    replay_file_shared_link_created ReplayFileSharedLinkCreatedType
+        "(sharing) Created shared link in Replay"
+    replay_file_shared_link_modified ReplayFileSharedLinkModifiedType
+        "(sharing) Modified shared link in Replay"
+    replay_project_team_add ReplayProjectTeamAddType
+        "(sharing) Added member to Replay Project"
+    replay_project_team_delete ReplayProjectTeamDeleteType
+        "(sharing) Removed member from Replay Project"
     sf_add_group SfAddGroupType
         "(sharing) Added team to shared folder (deprecated, no longer logged)"
     sf_allow_non_members_to_view_shared_links SfAllowNonMembersToViewSharedLinksType
@@ -9866,12 +11193,18 @@ union EventType
         "(team_folders) Changed sync default"
     account_capture_change_policy AccountCaptureChangePolicyType
         "(team_policies) Changed account capture setting on team domain"
+    admin_email_reminders_changed AdminEmailRemindersChangedType
+        "(team_policies) Changed admin reminder settings for requests to join the team"
     allow_download_disabled AllowDownloadDisabledType
         "(team_policies) Disabled downloads (deprecated, no longer logged)"
     allow_download_enabled AllowDownloadEnabledType
         "(team_policies) Enabled downloads (deprecated, no longer logged)"
+    app_permissions_changed AppPermissionsChangedType
+        "(team_policies) Changed app permissions"
     camera_uploads_policy_changed CameraUploadsPolicyChangedType
         "(team_policies) Changed camera uploads setting for team"
+    capture_transcript_policy_changed CaptureTranscriptPolicyChangedType
+        "(team_policies) Changed Capture transcription policy for team"
     classification_change_policy ClassificationChangePolicyType
         "(team_policies) Changed classification policy for team"
     computer_backup_policy_changed ComputerBackupPolicyChangedType
@@ -9898,6 +11231,10 @@ union EventType
         "(team_policies) Added members to directory restrictions list"
     directory_restrictions_remove_members DirectoryRestrictionsRemoveMembersType
         "(team_policies) Removed members from directory restrictions list"
+    dropbox_passwords_policy_changed DropboxPasswordsPolicyChangedType
+        "(team_policies) Changed Dropbox Passwords policy for team"
+    email_ingest_policy_changed EmailIngestPolicyChangedType
+        "(team_policies) Changed email to Dropbox policy for team"
     emm_add_exception EmmAddExceptionType
         "(team_policies) Added members to EMM exception list"
     emm_change_policy EmmChangePolicyType
@@ -9906,10 +11243,14 @@ union EventType
         "(team_policies) Removed members from EMM exception list"
     extended_version_history_change_policy ExtendedVersionHistoryChangePolicyType
         "(team_policies) Accepted/opted out of extended version history"
+    external_drive_backup_policy_changed ExternalDriveBackupPolicyChangedType
+        "(team_policies) Changed external drive backup policy for team"
     file_comments_change_policy FileCommentsChangePolicyType
         "(team_policies) Enabled/disabled commenting on team files"
     file_locking_policy_changed FileLockingPolicyChangedType
         "(team_policies) Changed file locking policy for team"
+    file_provider_migration_policy_changed FileProviderMigrationPolicyChangedType
+        "(team_policies) Changed File Provider Migration policy for team"
     file_requests_change_policy FileRequestsChangePolicyType
         "(team_policies) Enabled/disabled file requests"
     file_requests_emails_enabled FileRequestsEmailsEnabledType
@@ -9918,12 +11259,16 @@ union EventType
         "(team_policies) Enabled file request emails for team (deprecated, no longer logged)"
     file_transfers_policy_changed FileTransfersPolicyChangedType
         "(team_policies) Changed file transfers policy for team"
+    folder_link_restriction_policy_changed FolderLinkRestrictionPolicyChangedType
+        "(team_policies) Changed folder link restrictions policy for team"
     google_sso_change_policy GoogleSsoChangePolicyType
         "(team_policies) Enabled/disabled Google single sign-on for team"
     group_user_management_change_policy GroupUserManagementChangePolicyType
         "(team_policies) Changed who can create groups"
     integration_policy_changed IntegrationPolicyChangedType
         "(team_policies) Changed integration policy for team"
+    invite_acceptance_email_policy_changed InviteAcceptanceEmailPolicyChangedType
+        "(team_policies) Changed invite accept email policy for team"
     member_requests_change_policy MemberRequestsChangePolicyType
         "(team_policies) Changed whether users can find team when not invited"
     member_send_invite_policy_changed MemberSendInvitePolicyChangedType
@@ -9970,6 +11315,12 @@ union EventType
         "(team_policies) Changed send for signature policy for team"
     sharing_change_folder_join_policy SharingChangeFolderJoinPolicyType
         "(team_policies) Changed whether team members can join shared folders owned outside team"
+    sharing_change_link_allow_change_expiration_policy SharingChangeLinkAllowChangeExpirationPolicyType
+        "(team_policies) Changed the allow remove or change expiration policy for the links shared outside of the team"
+    sharing_change_link_default_expiration_policy SharingChangeLinkDefaultExpirationPolicyType
+        "(team_policies) Changed the default expiration for the links shared outside of the team"
+    sharing_change_link_enforce_password_policy SharingChangeLinkEnforcePasswordPolicyType
+        "(team_policies) Changed the password requirement for the links shared outside of the team"
     sharing_change_link_policy SharingChangeLinkPolicyType
         "(team_policies) Changed whether members can share links outside team, and if links are accessible only by team members or anyone by default"
     sharing_change_member_policy SharingChangeMemberPolicyType
@@ -10016,18 +11367,28 @@ union EventType
         "(team_policies) Changed how long members can stay signed in to Dropbox.com"
     web_sessions_change_idle_length_policy WebSessionsChangeIdleLengthPolicyType
         "(team_policies) Changed how long team members can be idle while signed in to Dropbox.com"
+    data_residency_migration_request_successful DataResidencyMigrationRequestSuccessfulType
+        "(team_profile) Requested data residency migration for team data"
+    data_residency_migration_request_unsuccessful DataResidencyMigrationRequestUnsuccessfulType
+        "(team_profile) Request for data residency migration for team data has failed"
     team_merge_from TeamMergeFromType
         "(team_profile) Merged another team into this team"
     team_merge_to TeamMergeToType
         "(team_profile) Merged this team into another team"
+    team_profile_add_background TeamProfileAddBackgroundType
+        "(team_profile) Added team background to display on shared link headers"
     team_profile_add_logo TeamProfileAddLogoType
         "(team_profile) Added team logo to display on shared link headers"
+    team_profile_change_background TeamProfileChangeBackgroundType
+        "(team_profile) Changed team background displayed on shared link headers"
     team_profile_change_default_language TeamProfileChangeDefaultLanguageType
         "(team_profile) Changed default language for team"
     team_profile_change_logo TeamProfileChangeLogoType
         "(team_profile) Changed team logo displayed on shared link headers"
     team_profile_change_name TeamProfileChangeNameType
         "(team_profile) Changed team name"
+    team_profile_remove_background TeamProfileRemoveBackgroundType
+        "(team_profile) Removed team background displayed on shared link headers"
     team_profile_remove_logo TeamProfileRemoveLogoType
         "(team_profile) Removed team logo displayed on shared link headers"
     tfa_add_backup_phone TfaAddBackupPhoneType
@@ -10102,6 +11463,18 @@ union EventType
 union EventTypeArg
     "The type of the event."
 
+    admin_alerting_alert_state_changed
+        "(admin_alerting) Changed an alert state"
+    admin_alerting_changed_alert_config
+        "(admin_alerting) Changed an alert setting"
+    admin_alerting_triggered_alert
+        "(admin_alerting) Triggered security alert"
+    ransomware_restore_process_completed
+        "(admin_alerting) Completed ransomware restore process"
+    ransomware_restore_process_started
+        "(admin_alerting) Started ransomware restore process"
+    app_blocked_by_permissions
+        "(apps) Failed to connect app for member"
     app_link_team
         "(apps) Linked app for team"
     app_link_user
@@ -10132,6 +11505,10 @@ union EventTypeArg
         "(comments) Unresolved file comment"
     governance_policy_add_folders
         "(data_governance) Added folders to policy"
+    governance_policy_add_folder_failed
+        "(data_governance) Couldn't add a folder to a policy"
+    governance_policy_content_disposed
+        "(data_governance) Content disposed"
     governance_policy_create
         "(data_governance) Activated a new policy"
     governance_policy_delete
@@ -10140,8 +11517,16 @@ union EventTypeArg
         "(data_governance) Edited policy"
     governance_policy_edit_duration
         "(data_governance) Changed policy duration"
+    governance_policy_export_created
+        "(data_governance) Created a policy download"
+    governance_policy_export_removed
+        "(data_governance) Removed a policy download"
     governance_policy_remove_folders
         "(data_governance) Removed folders from policy"
+    governance_policy_report_created
+        "(data_governance) Created a summary report for a policy"
+    governance_policy_zip_part_downloaded
+        "(data_governance) Downloaded content from a policy"
     legal_holds_activate_a_hold
         "(data_governance) Activated a hold"
     legal_holds_add_members
@@ -10192,6 +11577,10 @@ union EventTypeArg
         "(devices) Enrolled new Dropbox Passwords device"
     emm_refresh_auth_token
         "(devices) Refreshed auth token used for setting up EMM"
+    external_drive_backup_eligibility_status_checked
+        "(devices) Checked external drive backup eligibility status"
+    external_drive_backup_status_changed
+        "(devices) Modified external drive backup"
     account_capture_change_availability
         "(domains) Granted/revoked option to enable account capture on team domains"
     account_capture_migrate_account
@@ -10222,10 +11611,28 @@ union EventTypeArg
         "(domains) Removed domain from list of verified team domains"
     enabled_domain_invites
         "(domains) Enabled domain invites (deprecated, no longer logged)"
+    team_encryption_key_cancel_key_deletion
+        "(encryption) Canceled team encryption key deletion"
+    team_encryption_key_create_key
+        "(encryption) Created team encryption key"
+    team_encryption_key_delete_key
+        "(encryption) Deleted team encryption key"
+    team_encryption_key_disable_key
+        "(encryption) Disabled team encryption key"
+    team_encryption_key_enable_key
+        "(encryption) Enabled team encryption key"
+    team_encryption_key_rotate_key
+        "(encryption) Rotated team encryption key (deprecated, no longer logged)"
+    team_encryption_key_schedule_key_deletion
+        "(encryption) Scheduled encryption key deletion"
+    apply_naming_convention
+        "(file_operations) Applied naming convention"
     create_folder
         "(file_operations) Created folders (deprecated, no longer logged)"
     file_add
         "(file_operations) Added files and/or folders"
+    file_add_from_automation
+        "(file_operations) Added files and/or folders from automation"
     file_copy
         "(file_operations) Copied files and/or folders"
     file_delete
@@ -10260,8 +11667,28 @@ union EventTypeArg
         "(file_operations) Pinned item to folder overview"
     folder_overview_item_unpinned
         "(file_operations) Unpinned item from folder overview"
+    object_label_added
+        "(file_operations) Added a label"
+    object_label_removed
+        "(file_operations) Removed a label"
+    object_label_updated_value
+        "(file_operations) Updated a label's value"
+    organize_folder_with_tidy
+        "(file_operations) Organized a folder with multi-file organize"
+    replay_file_delete
+        "(file_operations) Deleted files in Replay"
     rewind_folder
         "(file_operations) Rewound a folder"
+    undo_naming_convention
+        "(file_operations) Reverted naming convention"
+    undo_organize_folder_with_tidy
+        "(file_operations) Removed multi-file organize"
+    user_tags_added
+        "(file_operations) Tagged a file"
+    user_tags_removed
+        "(file_operations) Removed tags"
+    email_ingest_receive_file
+        "(file_requests) Received files via Email to Dropbox"
     file_request_change
         "(file_requests) Changed file request"
     file_request_close
@@ -10322,6 +11749,10 @@ union EventTypeArg
         "(logins) Started admin sign-in-as session"
     sso_error
         "(logins) Failed to sign in via SSO (deprecated, replaced by 'Failed to sign in')"
+    backup_admin_invitation_sent
+        "(members) Invited members to activate Backup"
+    backup_invitation_opened
+        "(members) Opened Backup invite"
     create_team_invite_link
         "(members) Created team invite link"
     delete_team_invite_link
@@ -10340,6 +11771,8 @@ union EventTypeArg
         "(members) Changed membership type (limited/full) of member (deprecated, no longer logged)"
     member_change_name
         "(members) Changed team member name"
+    member_change_reseller_role
+        "(members) Changed team member reseller role"
     member_change_status
         "(members) Changed member status (invited, joined, suspended, etc.)"
     member_delete_manual_contacts
@@ -10476,6 +11909,10 @@ union EventTypeArg
         "(passwords) Reset password"
     password_reset_all
         "(passwords) Reset all team member passwords"
+    classification_create_report
+        "(reports) Created Classification report"
+    classification_create_report_fail
+        "(reports) Couldn't create Classification report"
     emm_create_exceptions_report
         "(reports) Created EMM-excluded users report"
     emm_create_usage_report
@@ -10506,6 +11943,10 @@ union EventTypeArg
         "(reports) Couldn't create report: Views of old links"
     paper_admin_export_start
         "(reports) Exported all team Paper docs"
+    ransomware_alert_create_report
+        "(reports) Created ransomware report"
+    ransomware_alert_create_report_failed
+        "(reports) Couldn't generate ransomware report"
     smart_sync_create_admin_privilege_report
         "(reports) Created Smart Sync non-admin devices report"
     team_activity_create_report
@@ -10536,6 +11977,14 @@ union EventTypeArg
         "(sharing) Shared received Paper doc (deprecated, no longer logged)"
     open_note_shared
         "(sharing) Opened shared Paper doc (deprecated, no longer logged)"
+    replay_file_shared_link_created
+        "(sharing) Created shared link in Replay"
+    replay_file_shared_link_modified
+        "(sharing) Modified shared link in Replay"
+    replay_project_team_add
+        "(sharing) Added member to Replay Project"
+    replay_project_team_delete
+        "(sharing) Removed member from Replay Project"
     sf_add_group
         "(sharing) Added team to shared folder (deprecated, no longer logged)"
     sf_allow_non_members_to_view_shared_links
@@ -10758,12 +12207,18 @@ union EventTypeArg
         "(team_folders) Changed sync default"
     account_capture_change_policy
         "(team_policies) Changed account capture setting on team domain"
+    admin_email_reminders_changed
+        "(team_policies) Changed admin reminder settings for requests to join the team"
     allow_download_disabled
         "(team_policies) Disabled downloads (deprecated, no longer logged)"
     allow_download_enabled
         "(team_policies) Enabled downloads (deprecated, no longer logged)"
+    app_permissions_changed
+        "(team_policies) Changed app permissions"
     camera_uploads_policy_changed
         "(team_policies) Changed camera uploads setting for team"
+    capture_transcript_policy_changed
+        "(team_policies) Changed Capture transcription policy for team"
     classification_change_policy
         "(team_policies) Changed classification policy for team"
     computer_backup_policy_changed
@@ -10790,6 +12245,10 @@ union EventTypeArg
         "(team_policies) Added members to directory restrictions list"
     directory_restrictions_remove_members
         "(team_policies) Removed members from directory restrictions list"
+    dropbox_passwords_policy_changed
+        "(team_policies) Changed Dropbox Passwords policy for team"
+    email_ingest_policy_changed
+        "(team_policies) Changed email to Dropbox policy for team"
     emm_add_exception
         "(team_policies) Added members to EMM exception list"
     emm_change_policy
@@ -10798,10 +12257,14 @@ union EventTypeArg
         "(team_policies) Removed members from EMM exception list"
     extended_version_history_change_policy
         "(team_policies) Accepted/opted out of extended version history"
+    external_drive_backup_policy_changed
+        "(team_policies) Changed external drive backup policy for team"
     file_comments_change_policy
         "(team_policies) Enabled/disabled commenting on team files"
     file_locking_policy_changed
         "(team_policies) Changed file locking policy for team"
+    file_provider_migration_policy_changed
+        "(team_policies) Changed File Provider Migration policy for team"
     file_requests_change_policy
         "(team_policies) Enabled/disabled file requests"
     file_requests_emails_enabled
@@ -10810,12 +12273,16 @@ union EventTypeArg
         "(team_policies) Enabled file request emails for team (deprecated, no longer logged)"
     file_transfers_policy_changed
         "(team_policies) Changed file transfers policy for team"
+    folder_link_restriction_policy_changed
+        "(team_policies) Changed folder link restrictions policy for team"
     google_sso_change_policy
         "(team_policies) Enabled/disabled Google single sign-on for team"
     group_user_management_change_policy
         "(team_policies) Changed who can create groups"
     integration_policy_changed
         "(team_policies) Changed integration policy for team"
+    invite_acceptance_email_policy_changed
+        "(team_policies) Changed invite accept email policy for team"
     member_requests_change_policy
         "(team_policies) Changed whether users can find team when not invited"
     member_send_invite_policy_changed
@@ -10862,6 +12329,12 @@ union EventTypeArg
         "(team_policies) Changed send for signature policy for team"
     sharing_change_folder_join_policy
         "(team_policies) Changed whether team members can join shared folders owned outside team"
+    sharing_change_link_allow_change_expiration_policy
+        "(team_policies) Changed the allow remove or change expiration policy for the links shared outside of the team"
+    sharing_change_link_default_expiration_policy
+        "(team_policies) Changed the default expiration for the links shared outside of the team"
+    sharing_change_link_enforce_password_policy
+        "(team_policies) Changed the password requirement for the links shared outside of the team"
     sharing_change_link_policy
         "(team_policies) Changed whether members can share links outside team, and if links are accessible only by team members or anyone by default"
     sharing_change_member_policy
@@ -10908,18 +12381,28 @@ union EventTypeArg
         "(team_policies) Changed how long members can stay signed in to Dropbox.com"
     web_sessions_change_idle_length_policy
         "(team_policies) Changed how long team members can be idle while signed in to Dropbox.com"
+    data_residency_migration_request_successful
+        "(team_profile) Requested data residency migration for team data"
+    data_residency_migration_request_unsuccessful
+        "(team_profile) Request for data residency migration for team data has failed"
     team_merge_from
         "(team_profile) Merged another team into this team"
     team_merge_to
         "(team_profile) Merged this team into another team"
+    team_profile_add_background
+        "(team_profile) Added team background to display on shared link headers"
     team_profile_add_logo
         "(team_profile) Added team logo to display on shared link headers"
+    team_profile_change_background
+        "(team_profile) Changed team background displayed on shared link headers"
     team_profile_change_default_language
         "(team_profile) Changed default language for team"
     team_profile_change_logo
         "(team_profile) Changed team logo displayed on shared link headers"
     team_profile_change_name
         "(team_profile) Changed team name"
+    team_profile_remove_background
+        "(team_profile) Removed team background displayed on shared link headers"
     team_profile_remove_logo
         "(team_profile) Removed team logo displayed on shared link headers"
     tfa_add_backup_phone

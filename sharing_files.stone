@@ -187,20 +187,29 @@ union ViewerInfoPolicy
 ##################################
 
 struct FileMemberActionResult
-    "Per-member result for :route:`add_file_member` or :route:`change_file_member_access`."
+    "Per-member result for :route:`add_file_member`."
 
     member MemberSelector
         "One of specified input members."
     result FileMemberActionIndividualResult
         "The outcome of the action on this member."
+    sckey_sha1 String?
+        "The SHA-1 encrypted shared content key."
+    invitation_signature List(String)?
+        "The sharing sender-recipient invitation signatures for the input member_id.
+        A member_id can be a group and thus have multiple users and multiple invitation signatures."
 
     example default
         member = default
         result = default
+        sckey_sha1 = "32gggb672f987b2d94ef1741616bdf37d565e8c1"
+        invitation_signature = ["32gggb672f987b2d94ef1741616bdf37d565e8c1:c1ce0a9ef6ggg65e6e2f43514082ea5ffefd9cf5"]
 
 union_closed FileMemberActionIndividualResult
     success AccessLevel?
-        "Member was successfully removed from this file. If AccessLevel is given,
+        "Part of the response for both add_file_member and remove_file_member_v1 (deprecated).
+        For add_file_member, indicates giving access was successful and at what AccessLevel.
+        For remove_file_member_v1, indicates member was successfully removed from the file. If AccessLevel is given,
         the member still has access via a parent shared folder."
     member_error FileMemberActionError
         "User was not able to perform this action."
@@ -261,14 +270,14 @@ struct AddFileMemberArgs
 
     members List(MemberSelector)
         "Members to add. Note that even an email address is given, this
-        may result in a user being directy added to the membership if that
+        may result in a user being directly added to the membership if that
         email is the user's main account email."
 
     custom_message String?
         "Message to send to added members in their invitation."
 
     quiet Boolean = false
-        "Whether added members should be notified via device notifications of
+        "Whether added members should be notified via email and device notifications of
         their invitation."
 
     access_level AccessLevel = viewer
@@ -286,11 +295,8 @@ struct AddFileMemberArgs
 
 # --
 
-route change_file_member_access(ChangeFileMemberAccessArgs, FileMemberActionResult, FileMemberActionError) deprecated by update_file_member
-    "Identical to update_file_member but with less information returned."
-
-struct ChangeFileMemberAccessArgs
-    "Arguments for :route:`change_file_member_access`."
+struct UpdateFileMemberArgs
+    "Arguments for :route:`update_file_member`."
 
     file PathOrId
         "File for which we are changing a member's access."
@@ -298,14 +304,6 @@ struct ChangeFileMemberAccessArgs
         "The member whose access we are changing."
     access_level AccessLevel
         "The new access level for the member."
-
-    example default
-        file = "id:3kmLmQFnf1AAAAAAAAAAAw"
-        member = default
-        access_level = viewer
-
-struct UpdateFileMemberArgs extends ChangeFileMemberAccessArgs
-    "Arguments for :route:`update_file_member`."
 
     example default
         file = "id:3kmLmQFnf1AAAAAAAAAAAw"
@@ -457,7 +455,8 @@ struct UserFileMembershipInfo extends UserMembershipInfo
     "The information about a user member of the shared content with an appended last seen timestamp."
 
     time_last_seen common.DropboxTimestamp?
-        "The UTC timestamp of when the user has last seen the content, if they have."
+        "The UTC timestamp of when the user has last seen the content. Only populated if the
+        user has seen the content and the caller has a plan that includes viewer history."
     platform_type seen_state.PlatformType?
         "The platform on which the user has last seen the content, or unknown."
 

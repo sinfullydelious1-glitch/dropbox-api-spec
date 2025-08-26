@@ -49,7 +49,7 @@ struct LegalHoldPolicy
     activation_time common.DropboxTimestamp?
         "The time at which the legal hold was activated."
     members MembersInfo
-        "Team members IDs and number of permanetly deleted members under hold."
+        "Team members IDs and number of permanently deleted members under hold."
     status LegalHoldStatus
         "The current state of the hold."
     start_date common.DropboxTimestamp
@@ -116,7 +116,7 @@ route legal_holds/create_policy(LegalHoldsPolicyCreateArg, LegalHoldsPolicyCreat
 
     attrs
         auth = "team"
-        scope = "team_data.member"
+        scope = "team_data.governance.write"
 
 #
 # route legal_holds/get_policy
@@ -142,7 +142,7 @@ route legal_holds/get_policy(LegalHoldsGetPolicyArg, LegalHoldsGetPolicyResult, 
 
     attrs
         auth = "team"
-        scope = "team_data.member"
+        scope = "team_data.governance.write"
 
 
 #
@@ -173,7 +173,7 @@ route legal_holds/list_policies(LegalHoldsListPoliciesArg, LegalHoldsListPolicie
 
     attrs
         auth = "team"
-        scope = "team_data.member"
+        scope = "team_data.governance.write"
 
 
 #
@@ -254,7 +254,7 @@ route legal_holds/list_held_revisions(LegalHoldsListHeldRevisionsArg, LegalHolds
 
     attrs
         auth = "team"
-        scope = "team_data.member"
+        scope = "team_data.governance.write"
 
 
 #
@@ -286,7 +286,7 @@ route legal_holds/list_held_revisions_continue(LegalHoldsListHeldRevisionsContin
 
     attrs
         auth = "team"
-        scope = "team_data.member"
+        scope = "team_data.governance.write"
 
 #
 # route legal_holds/update_policy
@@ -306,6 +306,8 @@ struct LegalHoldsPolicyUpdateArg
         members = ["dbmid:FDFSVF-DFSDF"]
 
 union LegalHoldsPolicyUpdateError extends LegalHoldsError
+    transient_error
+        "Temporary infrastructure failure, please retry."
     inactive_legal_hold
         "Trying to release an inactive legal hold."
     legal_hold_performing_another_operation
@@ -332,7 +334,7 @@ route legal_holds/update_policy(LegalHoldsPolicyUpdateArg, LegalHoldsPolicyUpdat
 
     attrs
         auth = "team"
-        scope = "team_data.member"
+        scope = "team_data.governance.write"
 
 #
 # route legal_holds/release_policy
@@ -360,4 +362,4 @@ route legal_holds/release_policy(LegalHoldsPolicyReleaseArg, Void, LegalHoldsPol
 
     attrs
         auth = "team"
-        scope = "team_data.member"
+        scope = "team_data.governance.write"

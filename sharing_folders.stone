@@ -22,6 +22,15 @@ union AccessLevel
     viewer_no_comment
         "The collaborator can only view the shared folder and does
         not have any access to comments."
+    traverse
+        "The collaborator can only view the shared folder that they have
+        access to."
+    no_access
+        "If there is a Righteous Link on the folder which grants access
+        and the user has visited such link, they are allowed to perform
+        certain action (i.e. add themselves to the folder) via the link
+        access even though the user themselves are not a member on the
+        shared folder yet."
 
 struct FolderPolicy
     "A set of policies governing membership and privileges for a shared
@@ -346,6 +355,9 @@ struct SharedFolderMetadataBase
         "The ID of the parent shared folder. This field is present only if the
         folder is contained within another shared folder."
 
+    path_display String?
+        "The full path of this shared folder. Absent for unmounted folders."
+
     path_lower String?
         "The lower-cased full path of this shared folder. Absent for unmounted folders."
 
@@ -422,6 +434,8 @@ union SharedFolderAccessError
     not_a_member
         "The user is not a member of the shared folder
         thus cannot access it."
+    invalid_member
+        "The user does not exist or their account is disabled."
     email_unverified
         "Never set."
     unmounted
@@ -663,9 +677,9 @@ struct ShareFolderArgBase
     member_policy MemberPolicy?
         "Who can be a member of this shared folder. Only applicable if the
         current user is on a team."
-    path files.WritePath
-        "The path to the folder to share. If it does not exist, then a new one
-        is created."
+    path files.WritePathOrId
+        "The path or the file id to the folder to share. If it does not exist,
+        then a new one is created."
     shared_link_policy SharedLinkPolicy?
         "The policy to apply to shared links created for content inside this
         shared folder.  The current user must be on a team to set this policy to
@@ -739,6 +753,8 @@ union SharePathError
         "We do not support sharing a folder inside a Mac OS X package."
     is_vault
         "We do not support sharing the Vault folder."
+    is_vault_locked
+        "We do not support sharing a folder inside a locked Vault."
     is_family
         "We do not support sharing the Family folder."
 
@@ -1067,8 +1083,8 @@ struct RemoveFolderMemberArg
     leave_a_copy Boolean
         "If true, the removed user will keep their copy of the folder after
         it's unshared, assuming it was mounted. Otherwise, it will be removed
-        from their Dropbox. Also, this must be set to false when kicking a
-        group."
+        from their Dropbox. This must be set to false when removing a group,
+        or when the folder is within a team folder or another shared folder."
 
     example default
         shared_folder_id = "84528192421"
@@ -1234,7 +1250,9 @@ struct RelinquishFolderMembershipArg
     shared_folder_id common.SharedFolderId
         "The ID for the shared folder."
     leave_a_copy Boolean = false
-        "Keep a copy of the folder's contents upon relinquishing membership."
+        "Keep a copy of the folder's contents upon relinquishing membership.
+        This must be set to false when the folder is within a team folder
+        or another shared folder."
 
     example default
         shared_folder_id = "84528192421"
